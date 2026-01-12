@@ -22,10 +22,12 @@ git clone https://github.com/<your-username>/service-mesh-app.git
 ```
 
 2. Set up Python environment
+```
 python -m venv .venv
 source .venv/bin/activate  # Linux / Mac
 .venv\Scripts\activate     # Windows
 pip install -r requirements.txt
+```
 
 4. Configure database: service_mesh_app_db with tables users, posts, files
    
