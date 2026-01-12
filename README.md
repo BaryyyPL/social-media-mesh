@@ -7,7 +7,7 @@ A modular Python microservice application implementing a service mesh architectu
 This project is a Python microservice platform built with a service mesh architecture. It includes services for:
 - User authentication (login/registration)
 - Post management (upload, read)
-- File upload and management
+- File management (upload, read)
 
 ## Architecture
 - Manager: orchestrates agents and services

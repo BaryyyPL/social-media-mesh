@@ -9,7 +9,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
-PRIVATE_KEY_PATH = "service_agent_private_key.pem"
+PRIVATE_KEY_PATH = "registration_service_agent_private_key.pem"
 PUBLIC_KEY_PATH = "manager_public_key.pem"
 
 def load_or_create_private_key():
