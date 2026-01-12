@@ -1,0 +1,12 @@
+# Cryptography & Security
+cryptography==41.0.3
+pycryptodome==3.19.0
+
+# MySQL Connector
+mysql-connector-python==8.1.1
+
+# Environment management (optional)
+python-dotenv==1.0.0
+
+# Utilities
+pytz==2023.3
