@@ -1,3 +1,7 @@
+# Agents and client private keys
+*_agent_private_key.pem
+client_private_key.pem
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
