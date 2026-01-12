@@ -28,5 +28,5 @@ source .venv/bin/activate  # Linux / Mac
 pip install -r requirements.txt
 
 4. Configure database: service_mesh_app_db with tables users, posts, files
-5. 
-6. Run Manager, Agents and Clients
+   
+5. Run Manager, Agents and Clients
