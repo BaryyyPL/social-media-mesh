@@ -17,19 +17,93 @@ from database_configuration import Database
 lock = threading.Lock()
 
 
+def receive_message(agent):
+    try:
+        data = receive_secure_message(agent['socket'], agent['symmetrical_key'])
+        if data is None:
+            return None
+        return data.decode()
+
+    except (ConnectionResetError, BrokenPipeError, OSError):
+        return None
+
+
+def send_message(agent, message):
+    send_secure_message(agent['socket'], agent['symmetrical_key'], message)
+
+
+def do_cleanup(agent, agent_list):
+    with lock:
+        if agent in agent_list:
+            agent_list.remove(agent)
+
+
+def request_service_info(agent, session_message_id):
+
+    message = {
+        'request': 'ask_for_service_info',
+        'request_code': '104',
+        'message_id': session_message_id
+    }
+
+    send_message(agent, json.dumps(message))
+
+    raw_response = receive_message(agent)
+    if not raw_response:
+        return None
+
+    response = json.loads(raw_response)
+
+    if (
+        response['response_code'] == '999'
+        and response['request_code'] == '104'
+        and response['message_id'] == session_message_id
+    ):
+        return response['host'], response['port'], agent
+
+    return None
+
+
+def sort_agents(agent_list):
+    with lock:
+        agent_list.sort(key=lambda agent: agent['load'])
+
+
+def change_agent_load(agent, load_message, agent_list):
+    new_load = int(load_message['load'])
+
+    with lock:
+        for a in agent_list:
+            if a['socket'] == agent['socket']:
+                a['load'] = new_load
+                break
+
+    sort_agents(agent_list)
+
+
 class Manager:
     def __init__(self):
 
         self.flag = True
-        self.port_for_service_agent = 9999
-        self.port_for_api_gateway_agent = 9998
+        self.port_for_api_gateway_agent = 9999
+        self.port_for_registration_service_agent = 9998
+        self.port_for_login_service_agent = 9997
+        self.port_for_upload_posts_service_agent = 9996
+        self.port_for_read_posts_service_agent = 9995
+        self.port_for_upload_files_service_agent = 9994
+        self.port_for_download_files_service_agent = 9993
         self.host = 'localhost'
 
         self.maximum_number_of_attempts = 3
 
         with lock:
             self.list_of_api_gateways = []
-            self.list_of_service = []
+            self.list_of_registration_services = []
+            self.list_of_login_services = []
+            self.list_of_upload_posts_services = []
+            self.list_of_read_posts_services = []
+            self.list_of_upload_files_services = []
+            self.list_of_download_files_services = []
             self.message_id = 0
 
         self.api_gateway_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -46,7 +120,18 @@ class Manager:
     def run(self):
         try:
             threading.Thread(target=self.connect_with_api_gateway_agents, daemon=True).start()
-            threading.Thread(target=self.connect_with_api_service_agents, daemon=True).start()
+            threading.Thread(target=self.connect_with_service_agents(self.port_for_registration_service_agent,
+                                                                     self.list_of_registration_services), daemon=True).start()
+            threading.Thread(target=self.connect_with_service_agents(self.port_for_login_service_agent,
+                                                                     self.list_of_login_services), daemon=True).start()
+            threading.Thread(target=self.connect_with_service_agents(self.port_for_upload_posts_service_agent,
+                                                                     self.list_of_upload_posts_services), daemon=True).start()
+            threading.Thread(target=self.connect_with_service_agents(self.port_for_read_posts_service_agent,
+                                                                     self.list_of_read_posts_services), daemon=True).start()
+            threading.Thread(target=self.connect_with_service_agents(self.port_for_upload_files_service_agent,
+                                                                     self.list_of_upload_files_services), daemon=True).start()
+            threading.Thread(target=self.connect_with_service_agents(self.port_for_download_files_service_agent,
+                                                                     self.list_of_download_files_services), daemon=True).start()
             self.start_communication()
         except KeyboardInterrupt:
             print('Execution interrupted by user.')
@@ -65,7 +150,17 @@ class Manager:
         with lock:
             for agent in self.list_of_api_gateways:
                 agent['socket'].close()
-            for agent in self.list_of_service:
+            for agent in self.list_of_registration_services:
+                agent['socket'].close()
+            for agent in self.list_of_login_services:
+                agent['socket'].close()
+            for agent in self.list_of_upload_posts_services:
+                agent['socket'].close()
+            for agent in self.list_of_read_posts_services:
+                agent['socket'].close()
+            for agent in self.list_of_upload_files_services:
+                agent['socket'].close()
+            for agent in self.list_of_download_files_services:
                 agent['socket'].close()
 
         self.flag = False
@@ -107,9 +202,9 @@ class Manager:
                 api_gateway_agent_socket.close()
         self.api_gateway_socket.close()
 
-    def connect_with_api_service_agents(self):
+    def connect_with_service_agents(self, port, agent_list):
 
-        self.service_socket.bind((self.host, self.port_for_service_agent))
+        self.service_socket.bind((self.host, port))
         self.service_socket.listen(5)
 
         while True and self.flag:
@@ -141,7 +236,7 @@ class Manager:
 
                     service_agent_socket.settimeout(self.timeout)
                     with lock:
-                        self.list_of_service.append(agent)
+                        agent_list.append(agent)
 
                 else:
                     service_agent_socket.close()
@@ -164,14 +259,14 @@ class Manager:
             'message_id': session_message_id
         }
 
-        self.send_message(service_agent, json.dumps(message))
+        send_message(service_agent, json.dumps(message))
 
         start_time = time.monotonic()
         timeout_flag = False
 
-        raw_response_from_service_agent = self.receive_message(service_agent)
+        raw_response_from_service_agent = receive_message(service_agent)
         while raw_response_from_service_agent is None and timeout_flag is False:
-            raw_response_from_service_agent = self.receive_message(service_agent)
+            raw_response_from_service_agent = receive_message(service_agent)
             time.sleep(0.001)
             if time.monotonic() - start_time > 10:
                 timeout_flag = True
@@ -188,97 +283,47 @@ class Manager:
 
         return False
 
+    def verify_agents(self):
+        if self.list_of_registration_services and self.list_of_login_services \
+                and self.list_of_upload_posts_services and self.list_of_read_posts_services \
+                and self.list_of_upload_files_services and self.list_of_download_files_services:
+            return True
+        return False
+
     def start_communication(self):
 
         success_flag = False
         while not success_flag:
-            with lock:
-                ready = len(self.list_of_service) > 0 and len(self.list_of_api_gateways) > 0
 
-            if ready:
+            if self.verify_agents():
                 print('Working...')
-                success_flag = True
                 self.communication()
                 return
 
             time.sleep(0.001)
 
-    def do_cleanup(self, agent):
-        with lock:
-            if agent in self.list_of_api_gateways:
-                self.list_of_api_gateways.remove(agent)
-            if agent in self.list_of_service:
-                self.list_of_service.remove(agent)
-
-    def send_message(self, agent, message):
-        send_secure_message(agent['socket'], agent['symmetrical_key'], message)
-
-    def receive_message(self, agent):
-        try:
-            data = receive_secure_message(agent['socket'], agent['symmetrical_key'])
-            if data is None:
-                return None
-            return data.decode()
-
-        except (ConnectionResetError, BrokenPipeError, OSError) as e:
-            return None
-
-    def sort_agents(self):
-        with lock:
-            self.list_of_service.sort(key=lambda agent: agent['load'])
-
-    def request_service_info(self, agent, session_message_id):
-
-        message = {
-            'request': 'ask_for_service_info',
-            'request_code': '104',
-            'message_id': session_message_id
-        }
-
-        self.send_message(agent, json.dumps(message))
-
-        raw_response = self.receive_message(agent)
-        if not raw_response:
-            return None
-
-        response = json.loads(raw_response)
-
-        if (
-            response['response_code'] == '999'
-            and response['request_code'] == '104'
-            and response['message_id'] == session_message_id
-        ):
-            return response['host'], response['port'], agent
-
-        return None
-
-    def change_agent_load(self, agent, load_message):
-        new_load = int(load_message['load'])
-
-        with lock:
-            for a in self.list_of_service:
-                if a['socket'] == agent['socket']:
-                    a['load'] = new_load
-                    break
-
-        self.sort_agents()
-
     def receive_load_from_service(self):
 
         now = time.monotonic()
 
-        service_agents = list(self.list_of_service)
+        agents_lists = [self.list_of_registration_services, self.list_of_login_services,
+                        self.list_of_upload_posts_services, self.list_of_read_posts_services,
+                        self.list_of_upload_files_services, self.list_of_download_files_services]
 
-        for service_agent in service_agents:
-            service_message_data = self.receive_message(service_agent)
-            if service_message_data is None:
-                if now - service_agent['last_time_report'] > self.heartbeat_timeout:
-                    self.do_cleanup(service_agent)
-                continue
+        for a_list in agents_lists:
 
-            service_agent['last_time_report'] = now
-            message_from_agent = json.loads(service_message_data)
-            self.change_agent_load(service_agent, message_from_agent)
+            service_agents = list(a_list)
+
+            for service_agent in service_agents:
+                service_message_data = receive_message(service_agent)
+                if service_message_data is None:
+                    if now - service_agent['last_time_report'] > self.heartbeat_timeout:
+                        do_cleanup(service_agent, a_list)
+                    continue
+
+                service_agent['last_time_report'] = now
+                message_from_agent = json.loads(service_message_data)
+                change_agent_load(service_agent, message_from_agent, a_list)
 
     def handle_service_request(self):
 
@@ -288,11 +333,11 @@ class Manager:
         now = time.monotonic()
 
         for api_gateway_agent in api_gateways:
-            message_data = self.receive_message(api_gateway_agent)
+            message_data = receive_message(api_gateway_agent)
 
             if message_data is None:
                 if now - api_gateway_agent['last_time_report'] > self.heartbeat_timeout:
-                    self.do_cleanup(api_gateway_agent)
+                    do_cleanup(api_gateway_agent, self.list_of_api_gateways)
                 continue
 
             api_gateway_agent['last_time_report'] = now
@@ -304,63 +349,82 @@ class Manager:
                 session_message_id = message_from_agent['message_id']
                 service_type = message_from_agent['service_type']
 
-                if service_type == 'service':
-                    success_flag = False
-                    number_of_attempts = 0
+                agent_list = []
 
-                    while not success_flag and number_of_attempts < self.maximum_number_of_attempts:
+                if service_type == 'registration_service':
+                    agent_list = self.list_of_registration_services
 
-                        result = self.request_service_info(self.list_of_service[0], session_message_id)
+                elif service_type == 'login_service':
+                    agent_list = self.list_of_login_services
 
-                        if result:
-                            success_flag = True
-                            host, port, service_agent = result
+                elif service_type == 'upload_posts_service':
+                    agent_list = self.list_of_upload_posts_services
 
-                            symmetrical_key = generate_symmetrical_key()
+                elif service_type == 'read_posts_service':
+                    agent_list = self.list_of_read_posts_services
 
-                            message = {
+                elif service_type == 'upload_files_service':
+                    agent_list = self.list_of_upload_files_services
+
+                elif service_type == 'download_files_service':
+                    agent_list = self.list_of_download_files_services
+
+                success_flag = False
+                number_of_attempts = 0
+
+                while not success_flag and number_of_attempts < self.maximum_number_of_attempts:
+
+                    result = request_service_info(agent_list[0], session_message_id)
+
+                    if result:
+                        success_flag = True
+                        host, port, service_agent = result
+
+                        symmetrical_key = generate_symmetrical_key()
+
+                        message = {
+                            'request': 'provide_service_info',
+                            'request_code': '102',
+                            'symmetrical_key': base64_encode(symmetrical_key),
+                            'message_id': session_message_id
+                        }
+
+                        send_message(service_agent, json.dumps(message))
+
+                        raw_response = None
+                        while raw_response is None:
+                            raw_response = receive_message(service_agent)
+                            time.sleep(0.001)
+
+                        response_from_service = json.loads(raw_response)
+
+                        if response_from_service['message'] == 'Server OK':
+                            response = {
                                 'request': 'provide_service_info',
                                 'request_code': '102',
+                                'host': host,
+                                'port': port,
                                 'symmetrical_key': base64_encode(symmetrical_key),
-                                'message_id': session_message_id
+                                'message_id': session_message_id,
+                                'response_code': '999'
+                            }
+                        else:
+                            response = {
+                                'request': 'provide_service_info',
+                                'request_code': '102',
+                                'message_id': session_message_id,
+                                'response_code': '998'
                             }
 
-                            self.send_message(service_agent, json.dumps(message))
-
-                            raw_response = None
-                            while raw_response is None:
-                                raw_response = self.receive_message(service_agent)
-                                time.sleep(0.001)
-
-                            response_from_service = json.loads(raw_response)
-
-                            if response_from_service['message'] == 'Server OK':
-                                response = {
-                                    'request': 'provide_service_info',
-                                    'request_code': '102',
-                                    'host': host,
-                                    'port': port,
-                                    'symmetrical_key': base64_encode(symmetrical_key),
-                                    'message_id': session_message_id,
-                                    'response_code': '999'
-                                }
-                            else:
-                                response = {
-                                    'request': 'provide_service_info',
-                                    'request_code': '102',
-                                    'message_id': session_message_id,
-                                    'response_code': '998'
-                                }
-
-                            self.send_message(api_gateway_agent, json.dumps(response))
-                        else:
-                            number_of_attempts += 1
+                        send_message(api_gateway_agent, json.dumps(response))
+                    else:
+                        number_of_attempts += 1
 
     def communication(self):
         while self.flag:
             self.handle_service_request()
             self.receive_load_from_service()
-            if not self.list_of_service:
+            if not self.verify_agents():
                 print('No agents of any type available — shutting down manager')
                 raise SystemExit
 
