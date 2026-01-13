@@ -5,7 +5,7 @@ import time
 import mysql.connector
 from mysql.connector import Error
 
-from cryptography_process import symmetric_key_encrypt, symmetric_key_decrypt
+from cryptography_process import hash_password
 
 
 class Service:

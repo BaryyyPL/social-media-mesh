@@ -3,6 +3,7 @@ import json
 import os
 import socket
 
+import bcrypt
 from cryptography.exceptions import InvalidSignature
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -11,6 +12,11 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 PRIVATE_KEY_PATH = "registration_service_agent_private_key.pem"
 PUBLIC_KEY_PATH = "manager_public_key.pem"
+
+def hash_password(password):
+    salt = bcrypt.gensalt()
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed_password.decode('utf-8')
 
 def load_or_create_private_key():
     if os.path.exists(PRIVATE_KEY_PATH):
