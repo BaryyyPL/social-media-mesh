@@ -13,6 +13,28 @@ from cryptography_process import (
 )
 
 
+def get_request_and_request_code(service_type):
+
+    match service_type:
+        case 'registration_service':
+            return 'registration', '109'
+
+        case 'login_service':
+            return 'login', '110'
+
+        case 'upload_posts_service':
+            return 'upload_posts', '111'
+
+        case 'read_posts_service':
+            return 'read_posts', '112'
+
+        case 'upload_files_service':
+            return 'upload_files', '113'
+
+        case 'download_files_service':
+            return 'download_files', '114'
+
+
 class API_Gateway:
     ACCEPT_TIMEOUT = 0.1
     CLIENT_TIMEOUT = 0.1
@@ -163,6 +185,9 @@ class API_Gateway:
 
     def communication_with_services(self, message_from_client):
         service_type = message_from_client['service_type']
+
+        request, request_code = get_request_and_request_code(service_type)
+
         data = message_from_client['data']
 
         message_to_agent = {
@@ -184,8 +209,8 @@ class API_Gateway:
         self.connect_to_service_proxy()
 
         message_to_service = {
-            'request': 'communication',
-            'request_code': '105',
+            'request': request,
+            'request_code': request_code,
             'data': data
         }
         self.send_to_service_proxy(json.dumps(message_to_service))

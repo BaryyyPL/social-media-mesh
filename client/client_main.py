@@ -112,53 +112,66 @@ class Client:
 
     def communication(self):
         while self.flag:
-            print('\n1. Send message\n2. Exit')
-            option = input('Choose an option: ')
 
-            if option == '1':
-                message = {
-                    'request': 'communication',
-                    'request_code': '105',
-                    'service_type': 'service',
-                    'data': ''
-                }
+            service_type = None
+            data = None
 
-                start_time_ns = time.perf_counter_ns()
+            if self.client_id is None:
 
-                self.send_to_api_gateway(json.dumps(message))
+                print('\n1. Registration\n2. Exit')
+                option = input('Choose an option: ')
 
-                raw_response = self.receive_from_api_gateway()
-                while raw_response is None:
-                    raw_response = self.receive_from_api_gateway()
-                    if raw_response == 'error':
-                        print('Connection closed.')
-                        return
-                    time.sleep(0.001)
+                if option == '1':
 
-                end_time_ns = time.perf_counter_ns()
-                elapsed_ns = end_time_ns - start_time_ns
-                elapsed_ms = elapsed_ns / 1_000_000
-                elapsed_s = elapsed_ns / 1_000_000_000
+                    service_type = 'registration_service'
+                    login = input('Login: ')
+                    password = input('Password: ')
 
-                response = json.loads(raw_response)
-
-                if response['response_code'] == '999' and response['request_code'] == '105':
-                    for post in response['response']:
-                        if 'error' in post or 'info' in post:
-                            print(post)
-                        else:
-                            print(f'ID: {post['id']} | User: {post['user']} | {post['created_at']}')
-                            print(f'{post['content']}')
-                            print('-' * 50)
+                    data = {
+                        'login': login,
+                        'password': password
+                    }
 
                 else:
-                    print('Error in response.')
-
-                print(f'Elapsed time: {elapsed_ns} ns | {elapsed_ms:.3f} ms | {elapsed_s:.6f} s')
+                    self.disconnect_with_api_gateway()
+                    stop_client()
 
             else:
-                self.disconnect_with_api_gateway()
-                stop_client()
+                pass
+
+            message = {
+                'request': 'communication',
+                'request_code': '105',
+                'service_type': service_type,
+                'data': data
+            }
+
+            start_time_ns = time.perf_counter_ns()
+
+            self.send_to_api_gateway(json.dumps(message))
+
+            raw_response = self.receive_from_api_gateway()
+            while raw_response is None:
+                raw_response = self.receive_from_api_gateway()
+                if raw_response == 'error':
+                    print('Connection closed.')
+                    return
+                time.sleep(0.001)
+
+            end_time_ns = time.perf_counter_ns()
+            elapsed_ns = end_time_ns - start_time_ns
+            elapsed_ms = elapsed_ns / 1_000_000
+            elapsed_s = elapsed_ns / 1_000_000_000
+
+            response = json.loads(raw_response)
+
+            if response['response_code'] == '999' and response['request_code'] == '105':
+                print('response')
+
+            else:
+                print('Error in response.')
+
+            print(f'Elapsed time: {elapsed_ns} ns | {elapsed_ms:.3f} ms | {elapsed_s:.6f} s')
 
 
 client = Client()

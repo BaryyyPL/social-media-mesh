@@ -72,34 +72,49 @@ class Service:
                 message_from_service_proxy = self.receive_from_service_proxy()
                 time.sleep(0.001)
 
-            if message_from_service_proxy['request_code'] == '105':
+            if message_from_service_proxy['request_code'] == '109':
+
+                data = message_from_service_proxy['data']
+
+                login = data['login']
 
                 try:
-                    table_name = 'posty'
-                    select_query = f'SELECT id, id_autora, tresc, data FROM {table_name}'
-                    self.cursor.execute(select_query)
-                    rows = self.cursor.fetchall()
+                    self.cursor.execute(
+                        "SELECT id FROM users WHERE login = ?",
+                        (login,)
+                    )
 
-                    response = []
+                    row = self.cursor.fetchone()
 
-                    for row in rows:
-                        response.append({
-                            'id': row[0],
-                            'user': row[1],
-                            'content': row[2],
-                            'created_at': row[3].strftime('%Y-%m-%d %H:%M:%S') if hasattr(row[3], 'strftime') else str(
-                                row[3])
-                        })
+                    response = ''
 
-                    if not response:
-                        response = [{'info': 'No data in table.'}]
+                    if row:
+                        response = 'This login already exists. Please log in or select a different login.'
+                    else:
+
+                        password = data['password']
+                        hashed_password = hash_password(password)
+
+                        self.cursor.execute(
+                            "INSERT INTO users (login, password) VALUES (?, ?)",
+                            (login, hashed_password)
+                        )
+                        self.db_connection.commit()
+
+                        user_id = self.cursor.lastrowid
+
+                        if user_id:
+                            response = 'User has been added. Please log in.'
+                        else:
+                            response = 'User cannot be created.'
+
 
                 except Exception as e:
-                    response = [{'error': str(e)}]
+                    response = 'An error occurred.'
 
                 message_to_service_proxy = {
-                    'request': 'communication',
-                    'request_code': '105',
+                    'request': 'registration',
+                    'request_code': '109',
                     'response_code': '999',
                     'data': response
                 }

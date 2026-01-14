@@ -9,3 +9,4 @@ mysql-connector-python==9.5.0
 # Utilities
 
 bcrypt==5.0.0
+psutil==7.2.1

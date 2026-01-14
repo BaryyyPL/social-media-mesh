@@ -15,8 +15,8 @@ from cryptography_process import (
     receive_secure_message,
     base64_decode
 )
-from service_proxy_main import Service_Proxy
-from service_main import Service
+from download_files_service_sidecar_main import Service_Proxy
+from download_files_service_main import Service
 
 minimal_number_of_working_workers = 1
 maximum_number_of_not_working_workers = 1
