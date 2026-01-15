@@ -26,7 +26,7 @@ class Service:
         if not self.db_connection:
             raise SystemExit("Cannot connect to database")
 
-        self.cursor = self.db_connection.cursor()
+        self.cursor = self.db_connection.cursor(buffered=True)
 
         self.stop_flag = False
         self.thread = threading.Thread(
@@ -80,7 +80,7 @@ class Service:
 
                 try:
                     self.cursor.execute(
-                        "SELECT id FROM users WHERE login = ?",
+                        "SELECT id FROM users WHERE login = %s",
                         (login,)
                     )
 
@@ -96,7 +96,7 @@ class Service:
                         hashed_password = hash_password(password)
 
                         self.cursor.execute(
-                            "INSERT INTO users (login, password) VALUES (?, ?)",
+                            "INSERT INTO users (login, password_hash) VALUES (%s, %s)",
                             (login, hashed_password)
                         )
                         self.db_connection.commit()
@@ -110,7 +110,7 @@ class Service:
 
 
                 except Exception as e:
-                    response = 'An error occurred.'
+                    response = f'An error occurred - {e}'
 
                 message_to_service_proxy = {
                     'request': 'registration',

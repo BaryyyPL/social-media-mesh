@@ -75,7 +75,7 @@ class API_Gateway_Agent:
 
         self.flag = True
         self.message_id = 0
-        self.manager_port = 9998
+        self.manager_port = 9999
         self.manager_host = 'localhost'
         self.private_key = load_or_create_private_key()
         self.public_key = create_public_key(self.private_key)

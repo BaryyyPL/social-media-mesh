@@ -1,4 +1,5 @@
 import json
+import os
 import socket
 import time
 
@@ -15,6 +16,22 @@ from cryptography_process import (
 api_gateway_host = 'localhost'
 list_of_ports_of_api_gateway = [8666, 8667, 8668, 8669, 8670]
 maximum_number_of_attempts_for_connect_with_this_port = 3
+
+def clear_console():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def validate_password(password):
+    if len(password) < 5:
+        return False
+    '''if not any(c.isupper() for c in password):
+        return False
+    if not any(c.islower() for c in password):
+        return False
+    if not any(c.isdigit() for c in password):
+        return False
+    if not any(c in "!@#$%^&*()-_=+[]{};:,.<>?/|" for c in password):
+        return False'''
+    return True
 
 
 def stop_client():
@@ -125,6 +142,23 @@ class Client:
 
                     service_type = 'registration_service'
                     login = input('Login: ')
+                    password = input('Password (Minimum 5 characters): ')
+
+                    while not validate_password(password):
+                        clear_console()
+                        print('Incorrect password format.')
+                        login = input('Login: ')
+                        password = input('Password (Minimum 5 characters): ')
+
+                    data = {
+                        'login': login,
+                        'password': password
+                    }
+
+                elif option == '2':
+
+                    service_type = 'login_service'
+                    login = input('Login: ')
                     password = input('Password: ')
 
                     data = {
@@ -166,7 +200,7 @@ class Client:
             response = json.loads(raw_response)
 
             if response['response_code'] == '999' and response['request_code'] == '105':
-                print('response')
+                print(response['response'])
 
             else:
                 print('Error in response.')

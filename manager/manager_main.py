@@ -107,7 +107,12 @@ class Manager:
             self.message_id = 0
 
         self.api_gateway_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.registration_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.login_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.upload_posts_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.read_posts_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.upload_files_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.download_files_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         self.private_key = load_private_key()
 
@@ -119,19 +124,60 @@ class Manager:
 
     def run(self):
         try:
-            threading.Thread(target=self.connect_with_api_gateway_agents, daemon=True).start()
-            threading.Thread(target=self.connect_with_service_agents(self.port_for_registration_service_agent,
-                                                                     self.list_of_registration_services), daemon=True).start()
-            threading.Thread(target=self.connect_with_service_agents(self.port_for_login_service_agent,
-                                                                     self.list_of_login_services), daemon=True).start()
-            threading.Thread(target=self.connect_with_service_agents(self.port_for_upload_posts_service_agent,
-                                                                     self.list_of_upload_posts_services), daemon=True).start()
-            threading.Thread(target=self.connect_with_service_agents(self.port_for_read_posts_service_agent,
-                                                                     self.list_of_read_posts_services), daemon=True).start()
-            threading.Thread(target=self.connect_with_service_agents(self.port_for_upload_files_service_agent,
-                                                                     self.list_of_upload_files_services), daemon=True).start()
-            threading.Thread(target=self.connect_with_service_agents(self.port_for_download_files_service_agent,
-                                                                     self.list_of_download_files_services), daemon=True).start()
+            api_gateway_thread = threading.Thread(
+                target=self.connect_with_agents,
+                args=(
+                    self.port_for_api_gateway_agent,
+                    self.list_of_api_gateways,
+                    self.api_gateway_socket),
+                daemon=True)
+            registration_service_thread = threading.Thread(
+                target=self.connect_with_agents,
+                args=(
+                    self.port_for_registration_service_agent,
+                    self.list_of_registration_services,
+                    self.registration_service_socket),
+                daemon=True)
+            login_service_thread = threading.Thread(
+                target=self.connect_with_agents,
+                args=(
+                    self.port_for_login_service_agent,
+                    self.list_of_login_services,
+                    self.login_service_socket),
+                daemon=True)
+            upload_posts_service_thread = threading.Thread(
+                target=self.connect_with_agents,
+                args=(
+                    self.port_for_upload_posts_service_agent,
+                    self.list_of_upload_posts_services,
+                    self.upload_posts_service_socket),
+                daemon=True)
+            read_posts_service_thread = threading.Thread(
+                target=self.connect_with_agents,
+                args=(
+                    self.port_for_read_posts_service_agent,
+                    self.list_of_read_posts_services,
+                    self.read_posts_service_socket),
+                daemon=True)
+            upload_files_service_thread = threading.Thread(
+                target=self.connect_with_agents,
+                args=(
+                    self.port_for_upload_files_service_agent,
+                    self.list_of_upload_files_services,
+                    self.upload_files_service_socket),
+                daemon=True)
+            download_files_service_thread = threading.Thread(
+                target=self.connect_with_agents,
+                args=(
+                    self.port_for_download_files_service_agent,
+                    self.list_of_download_files_services,
+                    self.download_files_service_socket),
+                daemon=True)
+
+            api_gateway_thread.start()
+            registration_service_thread.start()
+
+            print('Threads running...')
             self.start_communication()
         except KeyboardInterrupt:
             print('Execution interrupted by user.')
@@ -145,7 +191,13 @@ class Manager:
 
     def cleanup_sockets(self):
         self.api_gateway_socket.close()
-        self.service_socket.close()
+        self.api_gateway_socket.close()
+        self.registration_service_socket.close()
+        self.login_service_socket.close()
+        self.upload_posts_service_socket.close()
+        self.read_posts_service_socket.close()
+        self.upload_files_service_socket.close()
+        self.download_files_service_socket.close()
 
         with lock:
             for agent in self.list_of_api_gateways:
@@ -166,14 +218,14 @@ class Manager:
         self.flag = False
         print('All sockets closed, Manager terminated.')
 
-    def connect_with_api_gateway_agents(self):
+    def connect_with_agents(self, port, agent_list, service_socket):
 
-        self.api_gateway_socket.bind((self.host, self.port_for_api_gateway_agent))
-        self.api_gateway_socket.listen(5)
+        service_socket.bind((self.host, port))
+        service_socket.listen(5)
 
         while True and self.flag:
             try:
-                api_gateway_agent_socket, api_gateway_agent_address = self.api_gateway_socket.accept()
+                agent_socket, agent_address = service_socket.accept()
             except OSError:
                 break
 
@@ -183,67 +235,39 @@ class Manager:
 
             agent_public_key, symmetrical_key = handshake_sender(
                 self.private_key,
-                api_gateway_agent_socket,
+                agent_socket,
                 session_message_id
             )
 
             if agent_public_key and symmetrical_key:
                 agent = {
-                    'socket': api_gateway_agent_socket,
-                    'public_key': agent_public_key,
-                    'symmetrical_key': symmetrical_key,
-                    'load': 100,
-                    'last_time_report': time.monotonic()
-                }
-                api_gateway_agent_socket.settimeout(self.timeout)
-                with lock:
-                    self.list_of_api_gateways.append(agent)
-            else:
-                api_gateway_agent_socket.close()
-        self.api_gateway_socket.close()
-
-    def connect_with_service_agents(self, port, agent_list):
-
-        self.service_socket.bind((self.host, port))
-        self.service_socket.listen(5)
-
-        while True and self.flag:
-            try:
-                service_agent_socket, service_agent_address = self.service_socket.accept()
-            except OSError:
-                break
-
-            with lock:
-                session_message_id = self.message_id
-                self.message_id += 1
-
-            agent_public_key, symmetrical_key = handshake_sender(
-                self.private_key,
-                service_agent_socket,
-                session_message_id
-            )
-
-            if agent_public_key and symmetrical_key:
-                agent = {
-                    'socket': service_agent_socket,
+                    'socket': agent_socket,
                     'public_key': agent_public_key,
                     'symmetrical_key': symmetrical_key,
                     'load': 100,
                     'last_time_report': time.monotonic()
                 }
 
-                if self.send_database_configuration(agent):
+                if service_socket is self.api_gateway_socket:
 
-                    service_agent_socket.settimeout(self.timeout)
+                    agent_socket.settimeout(self.timeout)
                     with lock:
                         agent_list.append(agent)
 
                 else:
-                    service_agent_socket.close()
+
+                    if self.send_database_configuration(agent):
+
+                        agent_socket.settimeout(self.timeout)
+                        with lock:
+                            agent_list.append(agent)
+
+                    else:
+                        agent_socket.close()
 
             else:
-                service_agent_socket.close()
-        self.service_socket.close()
+                agent_socket.close()
+        service_socket.close()
 
     def send_database_configuration(self, service_agent):
 
@@ -284,9 +308,7 @@ class Manager:
         return False
 
     def verify_agents(self):
-        if self.list_of_registration_services and self.list_of_login_services \
-                and self.list_of_upload_posts_services and self.list_of_read_posts_services \
-                and self.list_of_upload_files_services and self.list_of_download_files_services:
+        if self.list_of_registration_services:
             return True
         return False
 
