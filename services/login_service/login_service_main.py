@@ -26,7 +26,7 @@ class Service:
         if not self.db_connection:
             raise SystemExit("Cannot connect to database")
 
-        self.cursor = self.db_connection.cursor()
+        self.cursor = self.db_connection.cursor(buffered=True)
 
         self.stop_flag = False
         self.thread = threading.Thread(
@@ -72,34 +72,49 @@ class Service:
                 message_from_service_proxy = self.receive_from_service_proxy()
                 time.sleep(0.001)
 
-            if message_from_service_proxy['request_code'] == '105':
+            if message_from_service_proxy['request_code'] == '110':
+
+                data = message_from_service_proxy['data']
+
+                login = data['login']
+
+                response = {
+                    'message': None,
+                    'id': False
+                }
 
                 try:
-                    table_name = 'posty'
-                    select_query = f'SELECT id, id_autora, tresc, data FROM {table_name}'
-                    self.cursor.execute(select_query)
-                    rows = self.cursor.fetchall()
+                    self.cursor.execute(
+                        "SELECT id, password_hash FROM users WHERE login = %s",
+                        (login,)
+                    )
 
-                    response = []
+                    row = self.cursor.fetchone()
 
-                    for row in rows:
-                        response.append({
-                            'id': row[0],
-                            'user': row[1],
-                            'content': row[2],
-                            'created_at': row[3].strftime('%Y-%m-%d %H:%M:%S') if hasattr(row[3], 'strftime') else str(
-                                row[3])
-                        })
+                    incorrect_login_or_password = True
 
-                    if not response:
-                        response = [{'info': 'No data in table.'}]
+                    if row:
+                        password_hash = row[1]
+
+                        password = data['password']
+                        if verify_password(password, password_hash):
+                            incorrect_login_or_password = False
+                            client_id = row[0]
+
+                            response = {
+                                'message': 'Successful login.',
+                                'id': str(client_id)
+                            }
+
+                    if incorrect_login_or_password:
+                        response['message'] = 'Incorrect login or password.'
 
                 except Exception as e:
-                    response = [{'error': str(e)}]
+                    response['message'] = f'An error occurred - {e}'
 
                 message_to_service_proxy = {
-                    'request': 'communication',
-                    'request_code': '105',
+                    'request': 'login',
+                    'request_code': '110',
                     'response_code': '999',
                     'data': response
                 }

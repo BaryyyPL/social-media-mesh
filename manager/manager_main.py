@@ -176,6 +176,7 @@ class Manager:
 
             api_gateway_thread.start()
             registration_service_thread.start()
+            login_service_thread.start()
 
             print('Threads running...')
             self.start_communication()
@@ -308,7 +309,9 @@ class Manager:
         return False
 
     def verify_agents(self):
-        if self.list_of_registration_services:
+        if (self.list_of_api_gateways
+                and self.list_of_registration_services
+                and self.list_of_login_services):
             return True
         return False
 
@@ -373,23 +376,24 @@ class Manager:
 
                 agent_list = []
 
-                if service_type == 'registration_service':
-                    agent_list = self.list_of_registration_services
+                match service_type:
+                    case 'registration_service':
+                        agent_list = self.list_of_registration_services
 
-                elif service_type == 'login_service':
-                    agent_list = self.list_of_login_services
+                    case 'login_service':
+                        agent_list = self.list_of_login_services
 
-                elif service_type == 'upload_posts_service':
-                    agent_list = self.list_of_upload_posts_services
+                    case 'upload_posts_service':
+                        agent_list = self.list_of_upload_posts_services
 
-                elif service_type == 'read_posts_service':
-                    agent_list = self.list_of_read_posts_services
+                    case 'read_posts_service':
+                        agent_list = self.list_of_read_posts_services
 
-                elif service_type == 'upload_files_service':
-                    agent_list = self.list_of_upload_files_services
+                    case 'upload_files_service':
+                        agent_list = self.list_of_upload_files_services
 
-                elif service_type == 'download_files_service':
-                    agent_list = self.list_of_download_files_services
+                    case 'download_files_service':
+                        agent_list = self.list_of_download_files_services
 
                 success_flag = False
                 number_of_attempts = 0

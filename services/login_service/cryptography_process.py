@@ -13,10 +13,10 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 PRIVATE_KEY_PATH = "login_service_agent_private_key.pem"
 PUBLIC_KEY_PATH = "manager_public_key.pem"
 
-def verify_password(password, hashed_password):
+def verify_password(password, password_hash):
     return bcrypt.checkpw(
         password.encode('utf-8'),
-        hashed_password.encode('utf-8')
+        password_hash.encode('utf-8')
     )
 
 def load_or_create_private_key():

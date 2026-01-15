@@ -13,6 +13,11 @@ from cryptography_process import (
     close_socket
 )
 
+from render_message_methods import (
+    render_registration_message,
+    render_login_message
+)
+
 api_gateway_host = 'localhost'
 list_of_ports_of_api_gateway = [8666, 8667, 8668, 8669, 8670]
 maximum_number_of_attempts_for_connect_with_this_port = 3
@@ -50,7 +55,7 @@ class Client:
 
     def run(self):
         try:
-            self.communication()
+            self.select_options()
         except KeyboardInterrupt:
             print('\nShutting down client - interrupted by user')
             self.flag = False
@@ -66,7 +71,7 @@ class Client:
 
     def connect_to_server(self):
         api_gateway_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        api_gateway_socket.settimeout(5.0)
+        api_gateway_socket.settimeout(60.0)
         print('Connecting to API Gateway...')
         while True:
             for api_gateway_port in list_of_ports_of_api_gateway:
@@ -95,8 +100,8 @@ class Client:
                 return received_secure_message.decode()
             else:
                 return None
-        except (ConnectionResetError, BrokenPipeError, OSError):
-            print('Connection to API Gateway lost.')
+        except (ConnectionResetError, BrokenPipeError, OSError) as e:
+            print(f'Connection to API Gateway lost - {e}.')
             self.disconnect_with_api_gateway()
             return 'error'
 
@@ -127,15 +132,12 @@ class Client:
             print('Client stopped.')
             raise SystemExit
 
-    def communication(self):
+    def select_options(self):
         while self.flag:
-
-            service_type = None
-            data = None
 
             if self.client_id is None:
 
-                print('\n1. Registration\n2. Exit')
+                print('\n1. Registration\n2. Log in\n3. Help\n4. Exit')
                 option = input('Choose an option: ')
 
                 if option == '1':
@@ -144,16 +146,25 @@ class Client:
                     login = input('Login: ')
                     password = input('Password (Minimum 5 characters): ')
 
+                    if login and password:
+                        data = {
+                            'login': login,
+                            'password': password
+                        }
+
                     while not validate_password(password):
                         clear_console()
                         print('Incorrect password format.')
                         login = input('Login: ')
                         password = input('Password (Minimum 5 characters): ')
 
-                    data = {
-                        'login': login,
-                        'password': password
-                    }
+                        if login and password:
+                            data = {
+                                'login': login,
+                                'password': password
+                            }
+
+                            self.communication(service_type, data)
 
                 elif option == '2':
 
@@ -161,51 +172,73 @@ class Client:
                     login = input('Login: ')
                     password = input('Password: ')
 
-                    data = {
-                        'login': login,
-                        'password': password
-                    }
+                    if login and password:
+
+                        data = {
+                            'login': login,
+                            'password': password
+                        }
+
+                        self.communication(service_type, data)
+
+
+                elif option == '3':
+
+                    print('To exit the operation, leave the fields blank and press ENTER.')
 
                 else:
                     self.disconnect_with_api_gateway()
                     stop_client()
 
             else:
-                pass
+                print('Logged')
+                self.disconnect_with_api_gateway()
+                stop_client()
 
-            message = {
-                'request': 'communication',
-                'request_code': '105',
-                'service_type': service_type,
-                'data': data
-            }
 
-            start_time_ns = time.perf_counter_ns()
+    def communication(self, service_type, data):
+        message = {
+            'request': 'communication',
+            'request_code': '105',
+            'service_type': service_type,
+            'data': data
+        }
 
-            self.send_to_api_gateway(json.dumps(message))
+        start_time_ns = time.perf_counter_ns()
 
+        self.send_to_api_gateway(json.dumps(message))
+
+        raw_response = self.receive_from_api_gateway()
+        while raw_response is None:
             raw_response = self.receive_from_api_gateway()
-            while raw_response is None:
-                raw_response = self.receive_from_api_gateway()
-                if raw_response == 'error':
-                    print('Connection closed.')
-                    return
-                time.sleep(0.001)
+            if raw_response == 'error':
+                print('Connection closed.')
+                return
+            time.sleep(0.001)
 
-            end_time_ns = time.perf_counter_ns()
-            elapsed_ns = end_time_ns - start_time_ns
-            elapsed_ms = elapsed_ns / 1_000_000
-            elapsed_s = elapsed_ns / 1_000_000_000
+        end_time_ns = time.perf_counter_ns()
+        elapsed_ns = end_time_ns - start_time_ns
+        elapsed_ms = elapsed_ns / 1_000_000
+        elapsed_s = elapsed_ns / 1_000_000_000
 
-            response = json.loads(raw_response)
+        response = json.loads(raw_response)
 
-            if response['response_code'] == '999' and response['request_code'] == '105':
-                print(response['response'])
+        if response['response_code'] == '999' and response['request_code'] == '105':
 
-            else:
-                print('Error in response.')
+            match service_type:
+                case 'registration_service':
+                    render_registration_message(response)
 
-            print(f'Elapsed time: {elapsed_ns} ns | {elapsed_ms:.3f} ms | {elapsed_s:.6f} s')
+                case 'login_service':
+                    self.client_id = render_login_message(response)
+
+                case _:
+                    print('Error')
+
+        else:
+            print('Error in response.')
+
+        print(f'Elapsed time: {elapsed_ns} ns | {elapsed_ms:.3f} ms | {elapsed_s:.6f} s')
 
 
 client = Client()

@@ -154,13 +154,13 @@ class Service_Proxy:
 
                     message_from_api_gateway = json.loads(raw_message_from_api_gateway)
 
-                    if message_from_api_gateway['request_code'] == '105':
+                    if message_from_api_gateway['request_code'] == '110':
 
                         data = message_from_api_gateway['data']
 
                         message_to_service = {
-                            'request': 'communication',
-                            'request_code': '105',
+                            'request': 'login',
+                            'request_code': '110',
                             'data': data
                         }
 
@@ -171,8 +171,8 @@ class Service_Proxy:
                         data = response_from_service['data']
 
                         message_to_api_gateway = {
-                            'request': 'communication',
-                            'request_code': '105',
+                            'request': 'login',
+                            'request_code': '110',
                             'data': data,
                             'response_code': '999'
                         }

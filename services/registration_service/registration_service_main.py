@@ -78,6 +78,8 @@ class Service:
 
                 login = data['login']
 
+                response = {'message': None}
+
                 try:
                     self.cursor.execute(
                         "SELECT id FROM users WHERE login = %s",
@@ -86,10 +88,9 @@ class Service:
 
                     row = self.cursor.fetchone()
 
-                    response = ''
 
                     if row:
-                        response = 'This login already exists. Please log in or select a different login.'
+                        response['message'] = 'This login already exists. Please log in or select a different login.'
                     else:
 
                         password = data['password']
@@ -104,13 +105,13 @@ class Service:
                         user_id = self.cursor.lastrowid
 
                         if user_id:
-                            response = 'User has been added. Please log in.'
+                            response['message'] = 'User has been added. Please log in.'
                         else:
-                            response = 'User cannot be created.'
+                            response['message'] = 'User cannot be created.'
 
 
                 except Exception as e:
-                    response = f'An error occurred - {e}'
+                    response['message'] = f'An error occurred - {e}'
 
                 message_to_service_proxy = {
                     'request': 'registration',
