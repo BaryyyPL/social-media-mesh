@@ -143,28 +143,26 @@ class Client:
                 if option == '1':
 
                     service_type = 'registration_service'
-                    login = input('Login: ')
-                    password = input('Password (Minimum 5 characters): ')
 
-                    if login and password:
-                        data = {
-                            'login': login,
-                            'password': password
-                        }
-
-                    while not validate_password(password):
-                        clear_console()
-                        print('Incorrect password format.')
+                    while True:
                         login = input('Login: ')
                         password = input('Password (Minimum 5 characters): ')
+                        repeat_password = input('Repeat password: ')
 
-                        if login and password:
+                        if not login or not password or not repeat_password:
+                            break
+
+                        if validate_password(password) and password == repeat_password:
                             data = {
                                 'login': login,
                                 'password': password
                             }
-
                             self.communication(service_type, data)
+                            break
+
+                        clear_console()
+                        print('Incorrect password format.')
+
 
                 elif option == '2':
 
