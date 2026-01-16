@@ -266,16 +266,21 @@ class Client:
                 elif option == '4':
 
                     service_type = 'download_files_service'
-                    data = None
 
-                    self.communication(service_type, data)
+                    filename = input('Filename to download: ')
+
+                    if filename:
+
+                        data = {
+                            'filename': filename
+                        }
+                        self.communication(service_type, data)
 
                 elif option == '5':
 
                     service_type = 'available_files_service'
-                    data = None
 
-                    self.communication(service_type, data)
+                    self.communication(service_type, {})
 
                 elif option == '6':
 
@@ -336,6 +341,9 @@ class Client:
                     pass
 
                 case 'download_files_service':
+                    pass
+
+                case 'available_files_service':
                     pass
 
                 case _:
