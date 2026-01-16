@@ -16,17 +16,25 @@ from cryptography_process import (
 
 from render_message_methods import (
     render_registration_message,
-    render_login_message
+    render_login_message,
+    render_upload_posts_message,
+    render_read_posts_message,
+    render_upload_files_message,
+    render_download_files_message,
+    render_available_files_message,
+    render_delete_account_message
 )
 
-MAX_FILE_SIZE = 5 * 1024 * 1024 # =5MB
+MAX_FILE_SIZE = 5 * 1024 * 1024  # =5MB
 
 api_gateway_host = 'localhost'
 list_of_ports_of_api_gateway = [8666, 8667, 8668, 8669, 8670]
 maximum_number_of_attempts_for_connect_with_this_port = 3
 
+
 def clear_console():
     os.system('cls' if os.name == 'nt' else 'clear')
+
 
 def validate_password(password):
     if len(password) < 5:
@@ -174,7 +182,6 @@ class Client:
                     password = input('Password: ')
 
                     if login and password:
-
                         data = {
                             'login': login,
                             'password': password
@@ -193,7 +200,8 @@ class Client:
 
             else:
 
-                print('\n1. Upload post\n2. Read posts\n3. Upload file\n4. Download file\n5. Available files\n6. Logout\n7. Help\n8. Exit')
+                print('\n1. Upload post\n2. Read posts\n3. Upload file\n4. Download file\n'
+                      '5. Available files\n6. Logout\n7. Help\n8. Delete account\n9. Exit')
                 option = input('Choose an option: ')
 
                 if option == '1':
@@ -203,7 +211,6 @@ class Client:
                     contents = input('Write your post: ')
 
                     if contents:
-
                         data = {
                             'contents': contents,
                             'id': self.user_id
@@ -241,7 +248,7 @@ class Client:
                         if not os.path.isfile(file_path):
                             clear_console()
                             print('File does not exist')
-                        
+
                         else:
 
                             with open(file_path, 'rb') as f:
@@ -252,7 +259,7 @@ class Client:
                                 print('File is too big')
 
                             else:
-    
+
                                 encoded_file = base64_encode(file_bytes)
 
                                 data = {
@@ -270,7 +277,6 @@ class Client:
                     filename = input('Filename to download: ')
 
                     if filename:
-
                         data = {
                             'filename': filename
                         }
@@ -290,10 +296,24 @@ class Client:
 
                     print('To exit the operation, leave the fields blank and press ENTER.')
 
+                elif option == '8':
+                    service_type = 'delete_account_service'
+                    print('Are you sure you want to delete your account? '
+                          '\nIf so, confirm the operation by entering your password. '
+                          '\nOtherwise, leave the field blank and press ENTER.')
+                    password = input('Password: ')
+
+                    if password:
+                        data = {
+                            'id': self.user_id,
+                            'password': password
+                        }
+
+                        self.communication(service_type, data)
+
                 else:
                     self.disconnect_with_api_gateway()
                     stop_client()
-
 
     def communication(self, service_type, data):
         message = {
@@ -332,19 +352,23 @@ class Client:
                     self.user_id = render_login_message(response)
 
                 case 'upload_posts_service':
-                    pass
+                    render_upload_posts_message(response)
 
                 case 'read_posts_service':
-                    pass
+                    render_read_posts_message(response)
 
                 case 'upload_files_service':
-                    pass
+                    render_upload_files_message(response)
 
                 case 'download_files_service':
-                    pass
+                    render_download_files_message(response)
 
                 case 'available_files_service':
-                    pass
+                    render_available_files_message(response)
+
+                case 'delete_account_service':
+                    if render_delete_account_message(response):
+                        self.user_id = None
 
                 case _:
                     print('Error')

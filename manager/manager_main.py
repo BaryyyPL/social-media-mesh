@@ -39,7 +39,6 @@ def do_cleanup(agent, agent_list):
 
 
 def request_service_info(agent, session_message_id):
-
     message = {
         'request': 'ask_for_service_info',
         'request_code': '104',
@@ -55,9 +54,9 @@ def request_service_info(agent, session_message_id):
     response = json.loads(raw_response)
 
     if (
-        response['response_code'] == '999'
-        and response['request_code'] == '104'
-        and response['message_id'] == session_message_id
+            response['response_code'] == '999'
+            and response['request_code'] == '104'
+            and response['message_id'] == session_message_id
     ):
         return response['host'], response['port'], agent
 
@@ -93,6 +92,7 @@ class Manager:
         self.port_for_upload_files_service_agent = 9994
         self.port_for_download_files_service_agent = 9993
         self.port_for_available_files_service_agent = 9992
+        self.port_for_delete_account_service_agent = 9991
         self.host = 'localhost'
 
         self.maximum_number_of_attempts = 3
@@ -106,6 +106,7 @@ class Manager:
             self.list_of_upload_files_services = []
             self.list_of_download_files_services = []
             self.list_of_available_files_service = []
+            self.list_of_delete_account_service = []
             self.message_id = 0
 
         self.api_gateway_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -116,6 +117,7 @@ class Manager:
         self.upload_files_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.download_files_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.available_files_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.delete_account_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         self.private_key = load_private_key()
 
@@ -185,6 +187,14 @@ class Manager:
                     self.available_files_service_socket),
                 daemon=True)
 
+            delete_account_service_thread = threading.Thread(
+                target=self.connect_with_agents,
+                args=(
+                    self.port_for_delete_account_service_agent,
+                    self.list_of_delete_account_service,
+                    self.delete_account_service_socket),
+                daemon=True)
+
             api_gateway_thread.start()
             registration_service_thread.start()
             login_service_thread.start()
@@ -202,33 +212,26 @@ class Manager:
             self.cleanup_sockets()
 
     def cleanup_sockets(self):
-        self.api_gateway_socket.close()
-        self.api_gateway_socket.close()
-        self.registration_service_socket.close()
-        self.login_service_socket.close()
-        self.upload_posts_service_socket.close()
-        self.read_posts_service_socket.close()
-        self.upload_files_service_socket.close()
-        self.download_files_service_socket.close()
-        self.available_files_service_socket.close()
+
+        list_of_service_sockets = [self.api_gateway_socket, self.registration_service_socket,
+                                   self.login_service_socket, self.upload_posts_service_socket,
+                                   self.read_posts_service_socket, self.upload_files_service_socket,
+                                   self.download_files_service_socket, self.available_files_service_socket,
+                                   self.delete_account_service_socket]
+
+        list_of_lists_of_agents = [self.list_of_api_gateways, self.list_of_registration_services,
+                                   self.list_of_login_services, self.list_of_upload_posts_services,
+                                   self.list_of_read_posts_services, self.list_of_upload_files_services,
+                                   self.list_of_download_files_services, self.list_of_available_files_service,
+                                   self.list_of_delete_account_service]
+
+        for service_socket in list_of_service_sockets:
+            service_socket.close()
 
         with lock:
-            for agent in self.list_of_api_gateways:
-                agent['socket'].close()
-            for agent in self.list_of_registration_services:
-                agent['socket'].close()
-            for agent in self.list_of_login_services:
-                agent['socket'].close()
-            for agent in self.list_of_upload_posts_services:
-                agent['socket'].close()
-            for agent in self.list_of_read_posts_services:
-                agent['socket'].close()
-            for agent in self.list_of_upload_files_services:
-                agent['socket'].close()
-            for agent in self.list_of_download_files_services:
-                agent['socket'].close()
-            for agent in self.list_of_available_files_service:
-                agent['socket'].close()
+            for list_of_agents in list_of_lists_of_agents:
+                for agent in list_of_agents:
+                    agent['socket'].close()
 
         self.flag = False
         print('All sockets closed, Manager terminated.')
@@ -289,7 +292,6 @@ class Manager:
         with lock:
             session_message_id = self.message_id
             self.message_id += 1
-
 
         message = {
             'request': 'database_configuration',

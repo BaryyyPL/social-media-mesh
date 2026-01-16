@@ -75,3 +75,8 @@ def render_available_files_message(response):
 
 def render_delete_account_message(response):
     print(response['response']['message'])
+
+    if response['response']['success_flag']:
+        return True
+
+    return False

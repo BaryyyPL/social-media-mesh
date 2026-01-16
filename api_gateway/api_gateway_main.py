@@ -37,6 +37,9 @@ def get_request_and_request_code(service_type):
         case 'available_files_service':
             return 'available_files', '115'
 
+        case 'delete_account_service':
+            return 'delete_account', '116'
+
 
 class API_Gateway:
     ACCEPT_TIMEOUT = 0.1
