@@ -92,6 +92,7 @@ class Manager:
         self.port_for_read_posts_service_agent = 9995
         self.port_for_upload_files_service_agent = 9994
         self.port_for_download_files_service_agent = 9993
+        self.port_for_available_files_service_agent = 9992
         self.host = 'localhost'
 
         self.maximum_number_of_attempts = 3
@@ -104,6 +105,7 @@ class Manager:
             self.list_of_read_posts_services = []
             self.list_of_upload_files_services = []
             self.list_of_download_files_services = []
+            self.list_of_available_files_service = []
             self.message_id = 0
 
         self.api_gateway_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -113,6 +115,7 @@ class Manager:
         self.read_posts_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.upload_files_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.download_files_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.available_files_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         self.private_key = load_private_key()
 
@@ -174,6 +177,14 @@ class Manager:
                     self.download_files_service_socket),
                 daemon=True)
 
+            available_files_service_thread = threading.Thread(
+                target=self.connect_with_agents,
+                args=(
+                    self.port_for_available_files_service_agent,
+                    self.list_of_available_files_service,
+                    self.available_files_service_socket),
+                daemon=True)
+
             api_gateway_thread.start()
             registration_service_thread.start()
             login_service_thread.start()
@@ -199,6 +210,7 @@ class Manager:
         self.read_posts_service_socket.close()
         self.upload_files_service_socket.close()
         self.download_files_service_socket.close()
+        self.available_files_service_socket.close()
 
         with lock:
             for agent in self.list_of_api_gateways:
@@ -214,6 +226,8 @@ class Manager:
             for agent in self.list_of_upload_files_services:
                 agent['socket'].close()
             for agent in self.list_of_download_files_services:
+                agent['socket'].close()
+            for agent in self.list_of_available_files_service:
                 agent['socket'].close()
 
         self.flag = False
@@ -333,7 +347,8 @@ class Manager:
 
         agents_lists = [self.list_of_registration_services, self.list_of_login_services,
                         self.list_of_upload_posts_services, self.list_of_read_posts_services,
-                        self.list_of_upload_files_services, self.list_of_download_files_services]
+                        self.list_of_upload_files_services, self.list_of_download_files_services,
+                        self.list_of_available_files_service]
 
         for a_list in agents_lists:
 

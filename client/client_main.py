@@ -10,13 +10,16 @@ from cryptography_process import (
     handshake_receiver,
     send_secure_message,
     receive_secure_message,
-    close_socket
+    close_socket,
+    base64_encode
 )
 
 from render_message_methods import (
     render_registration_message,
     render_login_message
 )
+
+MAX_FILE_SIZE = 5 * 1024 * 1024 # =5MB
 
 api_gateway_host = 'localhost'
 list_of_ports_of_api_gateway = [8666, 8667, 8668, 8669, 8670]
@@ -34,7 +37,7 @@ def validate_password(password):
         return False
     if not any(c.isdigit() for c in password):
         return False
-    if not any(c in "!@#$%^&*()-_=+[]{};:,.<>?/|" for c in password):
+    if not any(c in '!@#$%^&*()-_=+[]{};:,.<>?/|' for c in password):
         return False'''
     return True
 
@@ -50,7 +53,7 @@ class Client:
         self.public_key = create_public_key(self.private_key)
         self.api_gateway_public_key = load_api_gateway_public_key()
         self.symmetrical_key = None
-        self.client_id = None
+        self.user_id = None
         self.api_gateway_socket = self.connect_to_server()
 
     def run(self):
@@ -128,14 +131,14 @@ class Client:
                 print(f'Exception closing socket: {e}')
             self.api_gateway_socket = None
             self.symmetrical_key = None
-            self.client_id = None
+            self.user_id = None
             print('Client stopped.')
             raise SystemExit
 
     def select_options(self):
         while self.flag:
 
-            if self.client_id is None:
+            if self.user_id is None:
 
                 print('\n1. Registration\n2. Log in\n3. Help\n4. Exit')
                 option = input('Choose an option: ')
@@ -190,30 +193,75 @@ class Client:
 
             else:
 
-                print('\n1. Upload post\n2. Read posts\n3. Upload file\n4. Download file\n5. Logout\n6. Help\n7. Exit')
+                print('\n1. Upload post\n2. Read posts\n3. Upload file\n4. Download file\n5. Available files\n6. Logout\n7. Help\n8. Exit')
                 option = input('Choose an option: ')
 
                 if option == '1':
 
                     service_type = 'upload_posts_service'
-                    data = None
 
-                    self.communication(service_type, data)
+                    contents = input('Write your post: ')
+
+                    if contents:
+
+                        data = {
+                            'contents': contents,
+                            'id': self.user_id
+                        }
+
+                        self.communication(service_type, data)
 
 
                 elif option == '2':
 
                     service_type = 'read_posts_service'
-                    data = None
+                    number = input('Write number of posts (type number or "ALL" for all available posts): ')
 
-                    self.communication(service_type, data)
+                    if number:
+
+                        if number.isnumeric() or number.upper() == 'ALL':
+
+                            data = {
+                                'number': number
+                            }
+
+                            self.communication(service_type, data)
+
+                        else:
+                            clear_console()
+                            print('Wrong number')
 
                 elif option == '3':
 
                     service_type = 'upload_files_service'
-                    data = None
+                    file_path = input('Path to file: ')
 
-                    self.communication(service_type, data)
+                    if file_path:
+
+                        if not os.path.isfile(file_path):
+                            clear_console()
+                            print('File does not exist')
+                        
+                        else:
+
+                            with open(file_path, 'rb') as f:
+                                file_bytes = f.read()
+
+                            if len(file_bytes) > MAX_FILE_SIZE:
+                                clear_console()
+                                print('File is too big')
+
+                            else:
+    
+                                encoded_file = base64_encode(file_bytes)
+
+                                data = {
+                                    'id': self.user_id,
+                                    'filename': os.path.basename(file_path),
+                                    'file': encoded_file
+                                }
+
+                                self.communication(service_type, data)
 
                 elif option == '4':
 
@@ -222,12 +270,18 @@ class Client:
 
                     self.communication(service_type, data)
 
-
                 elif option == '5':
 
-                    self.client_id = None
+                    service_type = 'available_files_service'
+                    data = None
+
+                    self.communication(service_type, data)
 
                 elif option == '6':
+
+                    self.user_id = None
+
+                elif option == '7':
 
                     print('To exit the operation, leave the fields blank and press ENTER.')
 
@@ -270,7 +324,19 @@ class Client:
                     render_registration_message(response)
 
                 case 'login_service':
-                    self.client_id = render_login_message(response)
+                    self.user_id = render_login_message(response)
+
+                case 'upload_posts_service':
+                    pass
+
+                case 'read_posts_service':
+                    pass
+
+                case 'upload_files_service':
+                    pass
+
+                case 'download_files_service':
+                    pass
 
                 case _:
                     print('Error')

@@ -34,6 +34,9 @@ def get_request_and_request_code(service_type):
         case 'download_files_service':
             return 'download_files', '114'
 
+        case 'available_files_service':
+            return 'available_files', '115'
+
 
 class API_Gateway:
     ACCEPT_TIMEOUT = 0.1

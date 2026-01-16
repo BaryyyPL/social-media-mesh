@@ -5,7 +5,7 @@ import time
 import mysql.connector
 from mysql.connector import Error
 
-from cryptography_process import verify_password
+from cryptography_process import symmetric_key_encrypt, symmetric_key_decrypt
 
 
 class Service:
@@ -26,7 +26,7 @@ class Service:
         if not self.db_connection:
             raise SystemExit("Cannot connect to database")
 
-        self.cursor = self.db_connection.cursor(buffered=True)
+        self.cursor = self.db_connection.cursor()
 
         self.stop_flag = False
         self.thread = threading.Thread(
@@ -72,49 +72,34 @@ class Service:
                 message_from_service_proxy = self.receive_from_service_proxy()
                 time.sleep(0.001)
 
-            if message_from_service_proxy['request_code'] == '110':
-
-                data = message_from_service_proxy['data']
-
-                login = data['login']
-
-                response = {
-                    'message': None,
-                    'id': False
-                }
+            if message_from_service_proxy['request_code'] == '105':
 
                 try:
-                    self.cursor.execute(
-                        "SELECT id, password_hash FROM users WHERE login = %s",
-                        (login,)
-                    )
+                    table_name = 'posty'
+                    select_query = f'SELECT id, id_autora, tresc, data FROM {table_name}'
+                    self.cursor.execute(select_query)
+                    rows = self.cursor.fetchall()
 
-                    row = self.cursor.fetchone()
+                    response = []
 
-                    incorrect_login_or_password = True
+                    for row in rows:
+                        response.append({
+                            'id': row[0],
+                            'user': row[1],
+                            'content': row[2],
+                            'created_at': row[3].strftime('%Y-%m-%d %H:%M:%S') if hasattr(row[3], 'strftime') else str(
+                                row[3])
+                        })
 
-                    if row:
-                        password_hash = row[1]
-
-                        password = data['password']
-                        if verify_password(password, password_hash):
-                            incorrect_login_or_password = False
-                            client_id = row[0]
-
-                            response = {
-                                'message': 'Successful login.',
-                                'id': client_id
-                            }
-
-                    if incorrect_login_or_password:
-                        response['message'] = 'Incorrect login or password.'
+                    if not response:
+                        response = [{'info': 'No data in table.'}]
 
                 except Exception as e:
-                    response['message'] = f'An error occurred - {e}'
+                    response = [{'error': str(e)}]
 
                 message_to_service_proxy = {
-                    'request': 'login',
-                    'request_code': '110',
+                    'request': 'communication',
+                    'request_code': '105',
                     'response_code': '999',
                     'data': response
                 }
