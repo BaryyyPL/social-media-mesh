@@ -189,9 +189,51 @@ class Client:
                     stop_client()
 
             else:
-                print('Logged')
-                self.disconnect_with_api_gateway()
-                stop_client()
+
+                print('\n1. Upload post\n2. Read posts\n3. Upload file\n4. Download file\n5. Logout\n6. Help\n7. Exit')
+                option = input('Choose an option: ')
+
+                if option == '1':
+
+                    service_type = 'upload_posts_service'
+                    data = None
+
+                    self.communication(service_type, data)
+
+
+                elif option == '2':
+
+                    service_type = 'read_posts_service'
+                    data = None
+
+                    self.communication(service_type, data)
+
+                elif option == '3':
+
+                    service_type = 'upload_files_service'
+                    data = None
+
+                    self.communication(service_type, data)
+
+                elif option == '4':
+
+                    service_type = 'download_files_service'
+                    data = None
+
+                    self.communication(service_type, data)
+
+
+                elif option == '5':
+
+                    self.client_id = None
+
+                elif option == '6':
+
+                    print('To exit the operation, leave the fields blank and press ENTER.')
+
+                else:
+                    self.disconnect_with_api_gateway()
+                    stop_client()
 
 
     def communication(self, service_type, data):
