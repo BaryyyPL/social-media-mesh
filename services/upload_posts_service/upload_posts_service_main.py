@@ -94,9 +94,9 @@ class Service:
                     user_id = self.cursor.lastrowid
 
                     if user_id:
-                        response['message'] = 'User has been added. Please log in.'
+                        response['message'] = 'Your post is created.'
                     else:
-                        response['message'] = 'User cannot be created.'
+                        response['message'] = 'Post can not be created.'
 
                 except Exception as e:
                     response['message'] = f'An error occurred - {e}'
