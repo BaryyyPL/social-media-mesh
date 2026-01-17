@@ -5,12 +5,13 @@ import time
 import mysql.connector
 from mysql.connector import Error
 
-from cryptography_process import symmetric_key_encrypt, symmetric_key_decrypt
+from cryptography_process import symmetric_key_encrypt, symmetric_key_decrypt, base64_encode
 
 
 class Service:
     def __init__(self, service_proxy_queue_to_service, service_proxy_queue_from_service,
-                 database_host, database_user, database_password, database_database, database_port, database_symmetrical_key):
+                 database_host, database_user, database_password, database_database, database_port,
+                 database_symmetrical_key):
 
         self.service_proxy_queue_to_service = service_proxy_queue_to_service
         self.service_proxy_queue_from_service = service_proxy_queue_from_service
@@ -72,34 +73,48 @@ class Service:
                 message_from_service_proxy = self.receive_from_service_proxy()
                 time.sleep(0.001)
 
-            if message_from_service_proxy['request_code'] == '105':
+            if message_from_service_proxy['request_code'] == '114':
+
+                response = {
+                    'message': None,
+                    'filename': None,
+                    'file': None
+                }
+
+                data = message_from_service_proxy['data']
+
+                filename = data['filename']
 
                 try:
-                    table_name = 'posty'
-                    select_query = f'SELECT id, id_autora, tresc, data FROM {table_name}'
-                    self.cursor.execute(select_query)
-                    rows = self.cursor.fetchall()
 
-                    response = []
+                    encrypted_filename = symmetric_key_encrypt(self.database_symmetrical_key, filename)
 
-                    for row in rows:
-                        response.append({
-                            'id': row[0],
-                            'user': row[1],
-                            'content': row[2],
-                            'created_at': row[3].strftime('%Y-%m-%d %H:%M:%S') if hasattr(row[3], 'strftime') else str(
-                                row[3])
-                        })
+                    self.cursor.execute(
+                        "SELECT filename, file FROM files WHERE filename = %s",
+                        (encrypted_filename,)
+                    )
 
-                    if not response:
-                        response = [{'info': 'No data in table.'}]
+                    row = self.cursor.fetchone()
+
+                    if row:
+
+                        response['filename'] = filename
+                        file = row[1]
+                        decrypted_file = symmetric_key_decrypt(self.database_symmetrical_key, file)
+                        file_b64 = base64_encode(decrypted_file)
+
+                        response['file'] = file_b64
+
+                    else:
+                        response['message'] = 'Wrong filename.'
+
 
                 except Exception as e:
-                    response = [{'error': str(e)}]
+                    response['message'] = f'An error occurred - {e}'
 
                 message_to_service_proxy = {
-                    'request': 'communication',
-                    'request_code': '105',
+                    'request': 'download_files',
+                    'request_code': '114',
                     'response_code': '999',
                     'data': response
                 }
@@ -112,4 +127,3 @@ class Service:
                 self.db_connection.close()
 
             time.sleep(0.001)
-

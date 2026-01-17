@@ -1,15 +1,11 @@
-import binascii
 import queue
 import threading
 import time
-from pathlib import Path
 
 import mysql.connector
 from mysql.connector import Error
 
 from cryptography_process import symmetric_key_encrypt, base64_decode
-
-SERVER_FILES_PATH = Path.home() / 'Desktop' /'Server files'
 
 class Service:
     def __init__(self, service_proxy_queue_to_service, service_proxy_queue_from_service,
@@ -86,38 +82,37 @@ class Service:
                 file = data['file']
                 description = data['description']
 
+                file_bytes = base64_decode(file)
+                encrypted_file = symmetric_key_encrypt(self.database_symmetrical_key, file_bytes)
+
                 encrypted_filename = symmetric_key_encrypt(self.database_symmetrical_key, filename)
                 encrypted_description = symmetric_key_encrypt(self.database_symmetrical_key, description)
 
                 try:
                     self.cursor.execute(
-                        "INSERT INTO files (owner_id, filename, description) VALUES (%s, %s, %s)",
-                        (owner_id, encrypted_filename, encrypted_description)
+                        "SELECT filename FROM files WHERE filename = %s",
+                        (encrypted_filename,)
                     )
-                    self.db_connection.commit()
 
-                    file_id = self.cursor.lastrowid
+                    row = self.cursor.fetchone()
 
-                    saved_flag = True
+                    if row:
+                        response['message'] = 'This filename already exists.'
 
-                    try:
-                        file_bytes = base64_decode(file)
-                        encrypted_file = symmetric_key_encrypt(self.database_symmetrical_key, file_bytes)
-
-                        SERVER_FILES_PATH.mkdir(parents=True, exist_ok=True)
-
-                        file_path = SERVER_FILES_PATH / filename
-                        with open(file_path, 'wb') as f:
-                            f.write(encrypted_file)
-
-                    except (TypeError, ValueError, binascii.Error,
-                            FileNotFoundError, PermissionError, IsADirectoryError, OSError):
-                        saved_flag = False
-
-                    if file_id and saved_flag:
-                        response['message'] = 'Your file is created.'
                     else:
-                        response['message'] = 'File can not be created.'
+
+                        self.cursor.execute(
+                            "INSERT INTO files (owner_id, filename, description, file) VALUES (%s, %s, %s, %s)",
+                            (owner_id, encrypted_filename, encrypted_description, encrypted_file)
+                        )
+                        self.db_connection.commit()
+
+                        file_id = self.cursor.lastrowid
+
+                        if file_id:
+                            response['message'] = 'Your file is created.'
+                        else:
+                            response['message'] = 'File can not be created.'
 
                 except Exception as e:
                     response['message'] = f'An error occurred - {e}'

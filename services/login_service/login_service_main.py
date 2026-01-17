@@ -91,8 +91,6 @@ class Service:
 
                     row = self.cursor.fetchone()
 
-                    incorrect_login_or_password = True
-
                     if row:
 
                         is_deleted = row[2]
@@ -103,7 +101,6 @@ class Service:
 
                             password = data['password']
                             if verify_password(password, password_hash):
-                                incorrect_login_or_password = False
                                 client_id = row[0]
 
                                 response = {
@@ -111,10 +108,13 @@ class Service:
                                     'id': client_id
                                 }
 
+                            else:
+                                response['message'] = 'Incorrect login or password.'
+
                         else:
                             response['message'] = 'This account is deleted.'
 
-                    if incorrect_login_or_password:
+                    else:
                         response['message'] = 'Incorrect login or password.'
 
                 except Exception as e:
