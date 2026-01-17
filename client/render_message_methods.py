@@ -70,20 +70,25 @@ def render_download_files_message(response):
 def render_available_files_message(response):
     files = response['response']['files']
 
-    for file in files:
-        author = file['author']
-        date = file['create_time']
-        filename = file['filename']
-        description = file['description']
+    if files:
 
-        print('=' * 60)
-        print(f' Author: {author}')
-        print(f' Date : {date}')
-        print('-' * 60)
-        print(filename)
-        print(description)
-        print('=' * 60)
-        print()
+        for file in files:
+            author = file['author']
+            date = file['create_time']
+            filename = file['filename']
+            description = file['description']
+
+            print('=' * 60)
+            print(f' Author: {author}')
+            print(f' Date : {date}')
+            print('-' * 60)
+            print(filename)
+            print(description)
+            print('=' * 60)
+            print()
+
+    else:
+        print(response['response']['message'])
 
 
 def render_delete_account_message(response):

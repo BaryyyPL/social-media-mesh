@@ -81,15 +81,18 @@ class Service:
 
                 data = message_from_service_proxy['data']
 
-                file_id = data['id']
+                owner_id = data['id']
                 filename = data['filename']
                 file = data['file']
                 description = data['description']
 
+                encrypted_filename = symmetric_key_encrypt(self.database_symmetrical_key, filename)
+                encrypted_description = symmetric_key_encrypt(self.database_symmetrical_key, description)
+
                 try:
                     self.cursor.execute(
                         "INSERT INTO files (owner_id, filename, description) VALUES (%s, %s, %s)",
-                        (file_id, filename, description)
+                        (owner_id, encrypted_filename, encrypted_description)
                     )
                     self.db_connection.commit()
 

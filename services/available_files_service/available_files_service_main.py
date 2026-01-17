@@ -5,7 +5,7 @@ import time
 import mysql.connector
 from mysql.connector import Error
 
-from cryptography_process import symmetric_key_encrypt, symmetric_key_decrypt
+from cryptography_process import symmetric_key_decrypt
 
 
 class Service:
@@ -72,34 +72,51 @@ class Service:
                 message_from_service_proxy = self.receive_from_service_proxy()
                 time.sleep(0.001)
 
-            if message_from_service_proxy['request_code'] == '105':
+            if message_from_service_proxy['request_code'] == '115':
+
+                response = {
+                    'message': None,
+                    'files': []
+                }
 
                 try:
-                    table_name = 'posty'
-                    select_query = f'SELECT id, id_autora, tresc, data FROM {table_name}'
-                    self.cursor.execute(select_query)
+
+                    self.cursor.execute('''
+                        SELECT files.filename, files.description, files.create_time,
+                               CASE WHEN users.is_deleted = 1 THEN 'Deleted account' ELSE users.login END AS login
+                        FROM files
+                        JOIN users ON users.id = files.owner_id
+                        ORDER BY files.create_time DESC
+                    ''')
+
                     rows = self.cursor.fetchall()
 
-                    response = []
+                    if rows:
 
-                    for row in rows:
-                        response.append({
-                            'id': row[0],
-                            'user': row[1],
-                            'content': row[2],
-                            'created_at': row[3].strftime('%Y-%m-%d %H:%M:%S') if hasattr(row[3], 'strftime') else str(
-                                row[3])
-                        })
+                        for row in rows:
+                            filename = row[0]
+                            decrypted_filename = symmetric_key_decrypt(self.database_symmetrical_key, filename)
 
-                    if not response:
-                        response = [{'info': 'No data in table.'}]
+                            description = row[1]
+                            decrypted_description = symmetric_key_decrypt(self.database_symmetrical_key, description)
+
+                            response['files'].append({
+                                'filename': decrypted_filename,
+                                'description': decrypted_description,
+                                'create_time': (row[2].strftime('%Y-%m-%d %H:%M:%S')
+                                                if hasattr(row[2], 'utctime') else str(row[2])),
+                                'author': row[3]
+                            })
+
+                    else:
+                        response['message'] = 'No files'
 
                 except Exception as e:
-                    response = [{'error': str(e)}]
+                    response['message'] = f'An error occurred - {e}'
 
                 message_to_service_proxy = {
-                    'request': 'communication',
-                    'request_code': '105',
+                    'request': 'available_files',
+                    'request_code': '115',
                     'response_code': '999',
                     'data': response
                 }
