@@ -63,7 +63,7 @@ class Service_Agent:
         self.worker_lock = threading.Lock()
         self.flag = True
         self.message_id = 0
-        self.manager_port = 9999
+        self.manager_port = 9995
         self.manager_host = 'localhost'
 
         self.private_key = load_or_create_private_key()

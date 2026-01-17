@@ -21,20 +21,33 @@ def render_upload_posts_message(response):
 
 
 def render_read_posts_message(response):
-    posts = response['response']['posts']
+    message = response['response']['message']
+    good_number_flag = response['response']['good_number_flag']
 
-    for post in posts:
-        author = post['author']
-        date = post['create_time']
-        contents = post['contents']
+    if good_number_flag:
 
-        print('=' * 60)
-        print(f' Author: {author}')
-        print(f' Date : {date}')
-        print('-' * 60)
-        print(contents)
-        print('=' * 60)
-        print()
+        posts = response['response']['posts']
+
+        if posts:
+
+            for post in posts:
+                author = post['author']
+                date = post['create_time']
+                contents = post['contents']
+
+                print('=' * 60)
+                print(f' Author: {author}')
+                print(f' Date : {date}')
+                print('-' * 60)
+                print(contents)
+                print('=' * 60)
+                print()
+
+        else:
+            print(message)
+
+    else:
+        print(message)
 
 
 def render_upload_files_message(response):

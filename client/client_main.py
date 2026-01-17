@@ -226,7 +226,7 @@ class Client:
 
                     if number:
 
-                        if number.isnumeric() or number.upper() == 'ALL':
+                        if number.isnumeric() or number.lower() == 'all':
 
                             data = {
                                 'number': number

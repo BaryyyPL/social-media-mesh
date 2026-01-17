@@ -5,7 +5,7 @@ import time
 import mysql.connector
 from mysql.connector import Error
 
-from cryptography_process import symmetric_key_encrypt, symmetric_key_decrypt
+from cryptography_process import symmetric_key_decrypt
 
 
 class Service:
@@ -24,7 +24,7 @@ class Service:
 
         self.db_connection = self.connect_to_database()
         if not self.db_connection:
-            raise SystemExit("Cannot connect to database")
+            raise SystemExit('Cannot connect to database')
 
         self.cursor = self.db_connection.cursor()
 
@@ -55,11 +55,11 @@ class Service:
             )
 
             if connection.is_connected():
-                print("Database connected")
+                print('Database connected')
                 return connection
 
         except Error as e:
-            print(f"Database connection error: {e}")
+            print(f'Database connection error: {e}')
 
         return None
 
@@ -72,34 +72,79 @@ class Service:
                 message_from_service_proxy = self.receive_from_service_proxy()
                 time.sleep(0.001)
 
-            if message_from_service_proxy['request_code'] == '105':
+            if message_from_service_proxy['request_code'] == '112':
+
+                data = message_from_service_proxy['data']
+
+                number = data['number']
+
+                query = None
+                params = None
+                good_number_flag = True
+
+                response = {
+                    'message': None,
+                    'posts': [],
+                    'good_number_flag': True
+                }
+
+                if number == 'all':
+                    query = '''
+                        SELECT posts.content, posts.created_at, users.login
+                        FROM posts
+                        JOIN users ON users.id = posts.author_id
+                        ORDER BY posts.created_at DESC
+                    '''
+
+                elif number.isnumeric():
+                    query = '''
+                        SELECT posts.content, posts.created_at, users.login
+                        FROM posts
+                        JOIN users ON users.id = posts.author_id
+                        ORDER BY posts.created_at DESC
+                        LIMIT %s
+                    '''
+                    params = (int(number),)
+
+                else:
+                    response['message'] = 'Invalid number'
+                    good_number_flag = False
+                    response['good_number_flag'] = False
 
                 try:
-                    table_name = 'posty'
-                    select_query = f'SELECT id, id_autora, tresc, data FROM {table_name}'
-                    self.cursor.execute(select_query)
-                    rows = self.cursor.fetchall()
 
-                    response = []
+                    if good_number_flag:
 
-                    for row in rows:
-                        response.append({
-                            'id': row[0],
-                            'user': row[1],
-                            'content': row[2],
-                            'created_at': row[3].strftime('%Y-%m-%d %H:%M:%S') if hasattr(row[3], 'strftime') else str(
-                                row[3])
-                        })
+                        if params:
+                            self.cursor.execute(query, params)
 
-                    if not response:
-                        response = [{'info': 'No data in table.'}]
+                        else:
+                            self.cursor.execute(query)
+
+                        rows = self.cursor.fetchall()
+
+                        if rows:
+
+                            for row in rows:
+                                contents = row[0]
+                                decrypted_content = symmetric_key_decrypt(self.database_symmetrical_key ,contents)
+
+                                response['posts'].append({
+                                    'contents': decrypted_content,
+                                    'create_time': (row[1].strftime('%Y-%m-%d %H:%M:%S')
+                                                    if hasattr(row[1], 'utctime') else str(row[1])),
+                                    'author': row[2]
+                                })
+
+                        else:
+                            response['message'] = 'No posts'
 
                 except Exception as e:
-                    response = [{'error': str(e)}]
+                    response['message'] = f'An error occurred - {e}'
 
                 message_to_service_proxy = {
-                    'request': 'communication',
-                    'request_code': '105',
+                    'request': 'read_posts',
+                    'request_code': '112',
                     'response_code': '999',
                     'data': response
                 }
