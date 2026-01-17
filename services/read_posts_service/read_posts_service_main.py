@@ -90,21 +90,23 @@ class Service:
 
                 if number == 'all':
                     query = '''
-                        SELECT posts.content, posts.created_at, users.login
+                        SELECT posts.content, posts.create_time,
+                               CASE WHEN users.is_deleted = 1 THEN 'Deleted account' ELSE users.login END AS login
                         FROM posts
                         JOIN users ON users.id = posts.author_id
-                        ORDER BY posts.created_at DESC
+                        ORDER BY posts.create_time DESC
                     '''
-
                 elif number.isnumeric():
                     query = '''
-                        SELECT posts.content, posts.created_at, users.login
+                        SELECT posts.content, posts.create_time,
+                               CASE WHEN users.is_deleted = 1 THEN 'Deleted account' ELSE users.login END AS login
                         FROM posts
                         JOIN users ON users.id = posts.author_id
-                        ORDER BY posts.created_at DESC
+                        ORDER BY posts.create_time DESC
                         LIMIT %s
                     '''
                     params = (int(number),)
+
 
                 else:
                     response['message'] = 'Invalid number'
