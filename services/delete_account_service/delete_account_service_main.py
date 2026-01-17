@@ -24,7 +24,7 @@ class Service:
 
         self.db_connection = self.connect_to_database()
         if not self.db_connection:
-            raise SystemExit("Cannot connect to database")
+            raise SystemExit('Cannot connect to database')
 
         self.cursor = self.db_connection.cursor()
 
@@ -55,11 +55,11 @@ class Service:
             )
 
             if connection.is_connected():
-                print("Database connected")
+                print('Database connected')
                 return connection
 
         except Error as e:
-            print(f"Database connection error: {e}")
+            print(f'Database connection error: {e}')
 
         return None
 
@@ -72,34 +72,36 @@ class Service:
                 message_from_service_proxy = self.receive_from_service_proxy()
                 time.sleep(0.001)
 
-            if message_from_service_proxy['request_code'] == '105':
+            if message_from_service_proxy['request_code'] == '116':
+
+                response = {
+                    'message': None,
+                    'success_flag': False
+                }
+
+                data = message_from_service_proxy['data']
+
+                user_id = data['id']
 
                 try:
-                    table_name = 'posty'
-                    select_query = f'SELECT id, id_autora, tresc, data FROM {table_name}'
-                    self.cursor.execute(select_query)
-                    rows = self.cursor.fetchall()
+                    self.cursor.execute(
+                        'UPDATE users SET is_deleted = 1 WHERE id = %s',
+                        (user_id,)
+                    )
+                    self.db_connection.commit()
 
-                    response = []
-
-                    for row in rows:
-                        response.append({
-                            'id': row[0],
-                            'user': row[1],
-                            'content': row[2],
-                            'created_at': row[3].strftime('%Y-%m-%d %H:%M:%S') if hasattr(row[3], 'strftime') else str(
-                                row[3])
-                        })
-
-                    if not response:
-                        response = [{'info': 'No data in table.'}]
+                    if self.cursor.rowcount > 0:
+                        response['message'] = 'Your account is deleted.'
+                        response['success_flag'] = True
+                    else:
+                        response['message'] = 'Account can not be deleted.'
 
                 except Exception as e:
-                    response = [{'error': str(e)}]
+                    response['message'] = f'An error occurred - {e}'
 
                 message_to_service_proxy = {
-                    'request': 'communication',
-                    'request_code': '105',
+                    'request': 'delete_account',
+                    'request_code': '116',
                     'response_code': '999',
                     'data': response
                 }

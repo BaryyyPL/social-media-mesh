@@ -15,8 +15,8 @@ from cryptography_process import (
     receive_secure_message,
     base64_decode
 )
-from available_files_service_sidecar_main import Service_Proxy
-from available_files_service_main import Service
+from delete_account_service_sidecar_main import Service_Proxy
+from delete_account_service_main import Service
 
 minimal_number_of_working_workers = 1
 maximum_number_of_not_working_workers = 1
@@ -63,7 +63,7 @@ class Service_Agent:
         self.worker_lock = threading.Lock()
         self.flag = True
         self.message_id = 0
-        self.manager_port = 9999
+        self.manager_port = 9991
         self.manager_host = 'localhost'
 
         self.private_key = load_or_create_private_key()
