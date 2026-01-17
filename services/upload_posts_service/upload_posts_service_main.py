@@ -98,7 +98,11 @@ class Service:
                     else:
                         response['message'] = 'Post can not be created.'
 
-                except Exception as e:
+
+                except (mysql.connector.Error, mysql.connector.ProgrammingError,
+                        mysql.connector.InterfaceError, mysql.connector.DatabaseError,
+                        mysql.connector.OperationalError) as e:
+
                     response['message'] = f'An error occurred - {e}'
 
                 message_to_service_proxy = {

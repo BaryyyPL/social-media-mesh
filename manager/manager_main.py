@@ -209,9 +209,9 @@ class Manager:
 
             api_gateway_thread.start()
             #registration_service_thread.start()
-            login_service_thread.start()
-            upload_posts_service_thread.start()
-            #read_posts_service_thread.start()
+            #login_service_thread.start()
+            #upload_posts_service_thread.start()
+            read_posts_service_thread.start()
             #upload_files_service_thread.start()
             #download_files_service_thread.start()
             #available_files_service_thread.start()
@@ -332,7 +332,17 @@ class Manager:
 
     def verify_agents(self):
         with lock:
-            lists = self.list_of_lists_of_agents
+            #lists = self.list_of_lists_of_agents
+            lists = [self.list_of_api_gateways,
+                     #self.list_of_registration_services,
+                     #self.list_of_login_services,
+                     #self.list_of_upload_posts_services,
+                     self.list_of_read_posts_services,
+                     #self.list_of_upload_files_services,
+                     #self.list_of_download_files_services,
+                     #self.list_of_available_files_service,
+                     #self.list_of_delete_account_service
+            ]
 
         for list_of_agents in lists:
             if not list_of_agents:

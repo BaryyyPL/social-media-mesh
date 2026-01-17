@@ -90,7 +90,7 @@ class Service:
 
                 if number == 'all':
                     query = '''
-                        SELECT posts.content, posts.create_time,
+                        SELECT posts.contents, posts.create_time,
                                CASE WHEN users.is_deleted = 1 THEN 'Deleted account' ELSE users.login END AS login
                         FROM posts
                         JOIN users ON users.id = posts.author_id
@@ -98,7 +98,7 @@ class Service:
                     '''
                 elif number.isnumeric():
                     query = '''
-                        SELECT posts.content, posts.create_time,
+                        SELECT posts.contents, posts.create_time,
                                CASE WHEN users.is_deleted = 1 THEN 'Deleted account' ELSE users.login END AS login
                         FROM posts
                         JOIN users ON users.id = posts.author_id
@@ -127,11 +127,11 @@ class Service:
                         if rows:
 
                             for row in rows:
-                                contents = row['content']
-                                decrypted_content = symmetric_key_decrypt(self.database_symmetrical_key, contents)
+                                contents = row['contents']
+                                decrypted_contents = symmetric_key_decrypt(self.database_symmetrical_key, contents)
 
                                 response['posts'].append({
-                                    'contents': decrypted_content,
+                                    'contents': decrypted_contents,
                                     'create_time': (row['create_time'].strftime('%Y-%m-%d %H:%M:%S')
                                                     if hasattr(row['create_time'], 'utctime')
                                                     else str(row['create_time'])),
@@ -141,7 +141,9 @@ class Service:
                         else:
                             response['message'] = 'No posts'
 
-                except Exception as e:
+                except (mysql.connector.Error, mysql.connector.ProgrammingError,
+                        mysql.connector.InterfaceError, mysql.connector.DatabaseError,
+                        mysql.connector.OperationalError) as e:
                     response['message'] = f'An error occurred - {e}'
 
                 message_to_service_proxy = {

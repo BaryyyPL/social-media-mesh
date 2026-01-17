@@ -139,7 +139,7 @@ class Client:
                 print(f'Exception closing socket: {e}')
             self.api_gateway_socket = None
             self.symmetrical_key = None
-            self.user_id = None
+            self.user_id = 1
             print('Client stopped.')
             raise SystemExit
 
