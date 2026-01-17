@@ -242,6 +242,7 @@ class Client:
 
                     service_type = 'upload_files_service'
                     file_path = input('Path to file: ')
+                    description = input('Description (optional):')
 
                     if file_path:
 
@@ -265,7 +266,8 @@ class Client:
                                 data = {
                                     'id': self.user_id,
                                     'filename': os.path.basename(file_path),
-                                    'file': encoded_file
+                                    'file': encoded_file,
+                                    'description': description
                                 }
 
                                 self.communication(service_type, data)

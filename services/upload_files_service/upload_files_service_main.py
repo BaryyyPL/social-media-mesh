@@ -1,12 +1,15 @@
+import binascii
 import queue
 import threading
 import time
+from pathlib import Path
 
 import mysql.connector
 from mysql.connector import Error
 
-from cryptography_process import symmetric_key_encrypt, symmetric_key_decrypt
+from cryptography_process import symmetric_key_encrypt, base64_decode
 
+SERVER_FILES_PATH = Path.home() / 'Desktop' /'Server files'
 
 class Service:
     def __init__(self, service_proxy_queue_to_service, service_proxy_queue_from_service,
@@ -72,34 +75,53 @@ class Service:
                 message_from_service_proxy = self.receive_from_service_proxy()
                 time.sleep(0.001)
 
-            if message_from_service_proxy['request_code'] == '105':
+            if message_from_service_proxy['request_code'] == '113':
+
+                response = {'message': None}
+
+                data = message_from_service_proxy['data']
+
+                file_id = data['id']
+                filename = data['filename']
+                file = data['file']
+                description = data['description']
 
                 try:
-                    table_name = 'posty'
-                    select_query = f'SELECT id, id_autora, tresc, data FROM {table_name}'
-                    self.cursor.execute(select_query)
-                    rows = self.cursor.fetchall()
+                    self.cursor.execute(
+                        "INSERT INTO files (owner_id, filename, description) VALUES (%s, %s, %s)",
+                        (file_id, filename, description)
+                    )
+                    self.db_connection.commit()
 
-                    response = []
+                    file_id = self.cursor.lastrowid
 
-                    for row in rows:
-                        response.append({
-                            'id': row[0],
-                            'user': row[1],
-                            'content': row[2],
-                            'created_at': row[3].strftime('%Y-%m-%d %H:%M:%S') if hasattr(row[3], 'strftime') else str(
-                                row[3])
-                        })
+                    saved_flag = True
 
-                    if not response:
-                        response = [{'info': 'No data in table.'}]
+                    try:
+                        file_bytes = base64_decode(file)
+                        encrypted_file = symmetric_key_encrypt(self.database_symmetrical_key, file_bytes)
+
+                        SERVER_FILES_PATH.mkdir(parents=True, exist_ok=True)
+
+                        file_path = SERVER_FILES_PATH / filename
+                        with open(file_path, 'wb') as f:
+                            f.write(encrypted_file)
+
+                    except (TypeError, ValueError, binascii.Error,
+                            FileNotFoundError, PermissionError, IsADirectoryError, OSError):
+                        saved_flag = False
+
+                    if file_id and saved_flag:
+                        response['message'] = 'Your file is created.'
+                    else:
+                        response['message'] = 'File can not be created.'
 
                 except Exception as e:
-                    response = [{'error': str(e)}]
+                    response['message'] = f'An error occurred - {e}'
 
                 message_to_service_proxy = {
-                    'request': 'communication',
-                    'request_code': '105',
+                    'request': 'upload_files',
+                    'request_code': '113',
                     'response_code': '999',
                     'data': response
                 }
