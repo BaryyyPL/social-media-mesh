@@ -26,7 +26,7 @@ class Service:
         if not self.db_connection:
             raise SystemExit("Cannot connect to database")
 
-        self.cursor = self.db_connection.cursor()
+        self.cursor = self.db_connection.cursor(buffered=True, dictionary=True)
 
         self.stop_flag = False
         self.thread = threading.Thread(
@@ -94,18 +94,16 @@ class Service:
                     if rows:
 
                         for row in rows:
-                            filename = row[0]
-                            decrypted_filename = symmetric_key_decrypt(self.database_symmetrical_key, filename)
-
-                            description = row[1]
-                            decrypted_description = symmetric_key_decrypt(self.database_symmetrical_key, description)
+                            decrypted_filename = symmetric_key_decrypt(self.database_symmetrical_key, row['filename'])
+                            decrypted_description = symmetric_key_decrypt(self.database_symmetrical_key,
+                                                                          row['description'])
 
                             response['files'].append({
                                 'filename': decrypted_filename,
                                 'description': decrypted_description,
-                                'create_time': (row[2].strftime('%Y-%m-%d %H:%M:%S')
-                                                if hasattr(row[2], 'utctime') else str(row[2])),
-                                'author': row[3]
+                                'create_time': (row['create_time'].strftime('%Y-%m-%d %H:%M:%S')
+                                                if hasattr(row['create_time'], 'utctime') else str(row['create_time'])),
+                                'author': row['login']
                             })
 
                     else:

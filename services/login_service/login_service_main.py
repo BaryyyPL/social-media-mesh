@@ -26,7 +26,7 @@ class Service:
         if not self.db_connection:
             raise SystemExit("Cannot connect to database")
 
-        self.cursor = self.db_connection.cursor(buffered=True)
+        self.cursor = self.db_connection.cursor(buffered=True, dictionary=True)
 
         self.stop_flag = False
         self.thread = threading.Thread(
@@ -93,15 +93,15 @@ class Service:
 
                     if row:
 
-                        is_deleted = row[2]
+                        is_deleted = row['is_deleted']
 
                         if not is_deleted:
 
-                            password_hash = row[1]
+                            password_hash = row['password_hash']
 
                             password = data['password']
                             if verify_password(password, password_hash):
-                                client_id = row[0]
+                                client_id = row['id']
 
                                 response = {
                                     'message': 'Successful login.',

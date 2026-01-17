@@ -26,7 +26,7 @@ class Service:
         if not self.db_connection:
             raise SystemExit('Cannot connect to database')
 
-        self.cursor = self.db_connection.cursor()
+        self.cursor = self.db_connection.cursor(buffered=True, dictionary=True)
 
         self.stop_flag = False
         self.thread = threading.Thread(
@@ -119,7 +119,6 @@ class Service:
 
                         if params:
                             self.cursor.execute(query, params)
-
                         else:
                             self.cursor.execute(query)
 
@@ -128,14 +127,15 @@ class Service:
                         if rows:
 
                             for row in rows:
-                                contents = row[0]
-                                decrypted_content = symmetric_key_decrypt(self.database_symmetrical_key ,contents)
+                                contents = row['content']
+                                decrypted_content = symmetric_key_decrypt(self.database_symmetrical_key, contents)
 
                                 response['posts'].append({
                                     'contents': decrypted_content,
-                                    'create_time': (row[1].strftime('%Y-%m-%d %H:%M:%S')
-                                                    if hasattr(row[1], 'utctime') else str(row[1])),
-                                    'author': row[2]
+                                    'create_time': (row['create_time'].strftime('%Y-%m-%d %H:%M:%S')
+                                                    if hasattr(row['create_time'], 'utctime')
+                                                    else str(row['create_time'])),
+                                    'author': row['login']
                                 })
 
                         else:

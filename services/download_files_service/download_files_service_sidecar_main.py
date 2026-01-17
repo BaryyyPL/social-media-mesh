@@ -127,14 +127,14 @@ class Service_Proxy:
 
                 if status:
                     message_to_agent = {
-                        'request': 'communication',
+                        'request': 'provide_service_info',
                         'request_code': '102',
                         'message': 'Server OK'
                     }
 
                 else:
                     message_to_agent = {
-                        'request': 'communication',
+                        'request': 'provide_service_info',
                         'request_code': '102',
                         'message': 'Server not OK'
                     }
