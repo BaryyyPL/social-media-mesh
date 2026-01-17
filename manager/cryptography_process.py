@@ -1,5 +1,6 @@
 import base64
 import json
+import os
 import random
 
 from cryptography.fernet import Fernet
@@ -7,7 +8,8 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
-PRIVATE_KEY_PATH = "default_manager_private_key.pem"
+PRIVATE_KEY_PATH = 'default_manager_private_key.pem'
+DATABASE_SYMMETRICAL_KEY_PATH = 'database_symmetrical_key.key'
 
 def load_private_key():
     with open(PRIVATE_KEY_PATH, "rb") as f:
@@ -16,6 +18,15 @@ def load_private_key():
 def generate_symmetrical_key():
     return Fernet.generate_key()
 
+def load_symmetrical_key():
+    if os.path.exists(DATABASE_SYMMETRICAL_KEY_PATH):
+        with open(DATABASE_SYMMETRICAL_KEY_PATH, "rb") as f:
+            key = f.read()
+    else:
+        key = Fernet.generate_key()
+        with open(DATABASE_SYMMETRICAL_KEY_PATH, "wb") as f:
+            f.write(key)
+    return key
 
 def symmetric_key_encrypt(key, data):
     fernet = Fernet(key)

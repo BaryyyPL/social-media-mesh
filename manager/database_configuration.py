@@ -1,4 +1,4 @@
-from cryptography_process import generate_symmetrical_key, base64_encode
+from cryptography_process import load_symmetrical_key, base64_encode
 
 class Database:
     host = '127.0.0.1'
@@ -6,7 +6,7 @@ class Database:
     password = ''
     database = 'service_mesh_app_db'
     port = 3306
-    database_symmetrical_key = generate_symmetrical_key()
+    database_symmetrical_key = load_symmetrical_key()
 
     @classmethod
     def to_dict(cls):
