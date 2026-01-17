@@ -12,7 +12,7 @@ def render_registration_message(response):
 def render_login_message(response):
     print(response['response']['message'])
 
-    if not response['response']['id'] == False:
+    if response['response']['id']:
         return response['response']['id']
 
 

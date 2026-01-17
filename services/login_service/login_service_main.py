@@ -85,7 +85,7 @@ class Service:
 
                 try:
                     self.cursor.execute(
-                        "SELECT id, password_hash FROM users WHERE login = %s",
+                        "SELECT id, password_hash, is_deleted FROM users WHERE login = %s",
                         (login,)
                     )
 
@@ -94,17 +94,25 @@ class Service:
                     incorrect_login_or_password = True
 
                     if row:
-                        password_hash = row[1]
 
-                        password = data['password']
-                        if verify_password(password, password_hash):
-                            incorrect_login_or_password = False
-                            client_id = row[0]
+                        is_deleted = row[2]
 
-                            response = {
-                                'message': 'Successful login.',
-                                'id': client_id
-                            }
+                        if not is_deleted:
+
+                            password_hash = row[1]
+
+                            password = data['password']
+                            if verify_password(password, password_hash):
+                                incorrect_login_or_password = False
+                                client_id = row[0]
+
+                                response = {
+                                    'message': 'Successful login.',
+                                    'id': client_id
+                                }
+
+                        else:
+                            response['message'] = 'This account is deleted.'
 
                     if incorrect_login_or_password:
                         response['message'] = 'Incorrect login or password.'
