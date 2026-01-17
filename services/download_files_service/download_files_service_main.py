@@ -27,7 +27,7 @@ class Service:
         if not self.db_connection:
             raise SystemExit("Cannot connect to database")
 
-        self.cursor = self.db_connection.cursor()
+        self.cursor = self.db_connection.cursor(buffered=True, dictionary=True)
 
         self.stop_flag = False
         self.thread = threading.Thread(
@@ -99,15 +99,13 @@ class Service:
                     if row:
 
                         response['filename'] = filename
-                        file = row[1]
-                        decrypted_file = symmetric_key_decrypt(self.database_symmetrical_key, file)
+                        decrypted_file = symmetric_key_decrypt(self.database_symmetrical_key, row['file'])
                         file_b64 = base64_encode(decrypted_file)
 
                         response['file'] = file_b64
 
                     else:
                         response['message'] = 'Wrong filename.'
-
 
                 except Exception as e:
                     response['message'] = f'An error occurred - {e}'

@@ -119,6 +119,18 @@ class Manager:
         self.available_files_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.delete_account_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+        self.list_of_service_sockets = [self.api_gateway_socket, self.registration_service_socket,
+                                   self.login_service_socket, self.upload_posts_service_socket,
+                                   self.read_posts_service_socket, self.upload_files_service_socket,
+                                   self.download_files_service_socket, self.available_files_service_socket,
+                                   self.delete_account_service_socket]
+
+        self.list_of_lists_of_agents = [self.list_of_api_gateways, self.list_of_registration_services,
+                                   self.list_of_login_services, self.list_of_upload_posts_services,
+                                   self.list_of_read_posts_services, self.list_of_upload_files_services,
+                                   self.list_of_download_files_services, self.list_of_available_files_service,
+                                   self.list_of_delete_account_service]
+
         self.private_key = load_private_key()
 
         self.database_configuration = Database.to_dict()
@@ -196,8 +208,14 @@ class Manager:
                 daemon=True)
 
             api_gateway_thread.start()
-            registration_service_thread.start()
+            #registration_service_thread.start()
             login_service_thread.start()
+            upload_posts_service_thread.start()
+            #read_posts_service_thread.start()
+            #upload_files_service_thread.start()
+            #download_files_service_thread.start()
+            #available_files_service_thread.start()
+            #delete_account_service_thread.start()
 
             print('Threads running...')
             self.start_communication()
@@ -213,23 +231,11 @@ class Manager:
 
     def cleanup_sockets(self):
 
-        list_of_service_sockets = [self.api_gateway_socket, self.registration_service_socket,
-                                   self.login_service_socket, self.upload_posts_service_socket,
-                                   self.read_posts_service_socket, self.upload_files_service_socket,
-                                   self.download_files_service_socket, self.available_files_service_socket,
-                                   self.delete_account_service_socket]
-
-        list_of_lists_of_agents = [self.list_of_api_gateways, self.list_of_registration_services,
-                                   self.list_of_login_services, self.list_of_upload_posts_services,
-                                   self.list_of_read_posts_services, self.list_of_upload_files_services,
-                                   self.list_of_download_files_services, self.list_of_available_files_service,
-                                   self.list_of_delete_account_service]
-
-        for service_socket in list_of_service_sockets:
+        for service_socket in self.list_of_service_sockets:
             service_socket.close()
 
         with lock:
-            for list_of_agents in list_of_lists_of_agents:
+            for list_of_agents in self.list_of_lists_of_agents:
                 for agent in list_of_agents:
                     agent['socket'].close()
 
@@ -325,11 +331,13 @@ class Manager:
         return False
 
     def verify_agents(self):
-        if (self.list_of_api_gateways
-                and self.list_of_registration_services
-                and self.list_of_login_services):
-            return True
-        return False
+        with lock:
+            lists = self.list_of_lists_of_agents
+
+        for list_of_agents in lists:
+            if not list_of_agents:
+                return False
+        return True
 
     def start_communication(self):
 

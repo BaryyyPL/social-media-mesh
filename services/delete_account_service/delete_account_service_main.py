@@ -26,7 +26,7 @@ class Service:
         if not self.db_connection:
             raise SystemExit('Cannot connect to database')
 
-        self.cursor = self.db_connection.cursor()
+        self.cursor = self.db_connection.cursor(buffered=True, dictionary=True)
 
         self.stop_flag = False
         self.thread = threading.Thread(
