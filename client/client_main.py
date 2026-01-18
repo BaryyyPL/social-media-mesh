@@ -50,6 +50,14 @@ def validate_password(password):
     return True
 
 
+def validate_login(login):
+    if len(login.strip()) < 3:
+        return False
+    if ' ' in login.strip():
+        return False
+    return True
+
+
 def stop_client():
     raise SystemExit
 
@@ -164,16 +172,22 @@ class Client:
                         if not login or not password or not repeat_password:
                             break
 
-                        if validate_password(password) and password == repeat_password:
+                        if validate_login(login) and validate_password(password) and password == repeat_password:
                             data = {
-                                'login': login,
+                                'login': login.strip(),
                                 'password': password
                             }
                             self.communication(service_type, data)
                             break
 
                         clear_console()
-                        print('Incorrect password format.')
+
+                        if not validate_login(login):
+                            print('Incorrect login format.')
+                        elif not validate_password(password):
+                            print('Incorrect password format.')
+                        elif password != repeat_password:
+                            print('Passwords do not match.')
 
 
                 elif option == '2':
