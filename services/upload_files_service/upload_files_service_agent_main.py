@@ -21,18 +21,26 @@ from upload_files_service_main import Service
 minimal_number_of_working_workers = 1
 maximum_number_of_not_working_workers = 1
 
+
 def find_free_port():
+    reserved_ports = [9999, 9998, 9997, 9996, 9995, 9994, 9993, 9992, 9991,  # services ports
+                      8666, 8667, 8668, 8669, 8670  # api gateway ports
+                      ]
+
     start_port = 1024
     end_port = 49151
     for port in range(start_port, end_port + 1):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            if s.connect_ex(('127.0.0.1', port)) != 0:
-                return port
+        if port not in reserved_ports:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                if s.connect_ex(('127.0.0.1', port)) != 0:
+                    return port
+
 
 def send_to_process(process, message):
     queue_to_worker = process['agent_queue_to_service_proxy']
     queue_to_worker.put(message)
+
 
 def receive_from_process(process):
     queue_from_worker = process['agent_queue_from_service_proxy']
@@ -41,12 +49,14 @@ def receive_from_process(process):
     except queue.Empty:
         return None
 
+
 def receive_status_from_process(process):
     queue_from_worker = process['status_queue']
     try:
         return queue_from_worker.get_nowait()
     except queue.Empty:
         return None
+
 
 def stop_worker(process):
     queue_to_worker = process['agent_queue_to_service_proxy']
@@ -57,13 +67,14 @@ def stop_worker(process):
     }
     queue_to_worker.put(message_to_service)
 
+
 class Service_Agent:
     def __init__(self):
 
         self.worker_lock = threading.Lock()
         self.flag = True
         self.message_id = 0
-        self.manager_port = 9993
+        self.manager_port = 9994
         self.manager_host = 'localhost'
 
         self.private_key = load_or_create_private_key()
@@ -81,7 +92,6 @@ class Service_Agent:
         self.database_database = None
         self.database_port = None
         self.database_symmetrical_key = None
-
 
     def run(self):
         try:
@@ -108,8 +118,6 @@ class Service_Agent:
 
         return manager_socket
 
-
-
     def receive_database_configuration(self):
 
         raw_message_from_agent = self.receive_from_manager()
@@ -120,7 +128,6 @@ class Service_Agent:
         message_from_agent = json.loads(raw_message_from_agent)
 
         if message_from_agent['request_code'] == '108':
-
             session_message_id = message_from_agent['message_id']
             database_configuration = message_from_agent['database_configuration']
 
@@ -272,7 +279,6 @@ class Service_Agent:
 
         last_report_time = time.monotonic()
 
-
         while self.flag:
 
             raw_message_from_manager = self.receive_from_manager()
@@ -309,7 +315,8 @@ class Service_Agent:
 
                 message_from_manager = json.loads(raw_message_from_manager)
 
-                if message_from_manager['request_code'] == '102' and message_from_manager['message_id'] == session_message_id:
+                if message_from_manager['request_code'] == '102' and message_from_manager[
+                    'message_id'] == session_message_id:
                     encoded_symmetrical_key = message_from_manager['symmetrical_key']
                     symmetrical_key = base64_decode(encoded_symmetrical_key)
 
@@ -331,7 +338,8 @@ class Service_Agent:
                         'request_code': '102',
                         'message': 'Server OK'
                     }
-                elif message_from_process['request_code'] == '102' and message_from_process['message'] == 'Server not OK':
+                elif message_from_process['request_code'] == '102' and message_from_process[
+                    'message'] == 'Server not OK':
                     message_to_manager = {
                         'request': 'provide_service_info',
                         'request_code': '102',
