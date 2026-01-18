@@ -40,7 +40,7 @@ class Service:
 
     def receive_from_service_proxy(self):
         try:
-            return self.service_proxy_queue_to_service.get_nowait()
+            return self.service_proxy_queue_to_service.get(timeout=1.0)
         except queue.Empty:
             return None
 
@@ -68,9 +68,8 @@ class Service:
         while not self.stop_flag:
 
             message_from_service_proxy = self.receive_from_service_proxy()
-            while message_from_service_proxy is None:
-                message_from_service_proxy = self.receive_from_service_proxy()
-                time.sleep(0.001)
+            if message_from_service_proxy is None:
+                continue
 
             if message_from_service_proxy['request_code'] == '112':
 

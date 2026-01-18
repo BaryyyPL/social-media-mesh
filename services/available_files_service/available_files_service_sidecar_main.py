@@ -6,6 +6,7 @@ import time
 
 from cryptography_process import (send_secure_message, receive_secure_message, close_socket)
 
+
 class Service_Proxy:
     def __init__(self, host, port, agent_queue_to_service_proxy, agent_queue_from_service_proxy,
                  service_proxy_queue_to_service, service_proxy_queue_from_service, status_queue):
@@ -51,13 +52,12 @@ class Service_Proxy:
         except socket.timeout:
             return False
 
-
     def send_to_agent(self, message):
         self.agent_queue_from_service_proxy.put(message)
 
     def receive_from_agent(self):
         try:
-            return self.agent_queue_to_service_proxy.get()
+            return self.agent_queue_to_service_proxy.get(timeout=1.0)
         except queue.Empty:
             return None
 
@@ -65,7 +65,10 @@ class Service_Proxy:
         self.service_proxy_queue_to_service.put(message)
 
     def receive_from_service(self):
-        return self.service_proxy_queue_from_service.get()
+        try:
+            return self.service_proxy_queue_from_service.get(timeout=1.0)
+        except queue.Empty:
+            return None
 
     def send_status_to_agent(self, message):
         self.status_queue.put(message)
@@ -80,7 +83,7 @@ class Service_Proxy:
                 return received_secure_message.decode()
             else:
                 return None
-        except (ConnectionResetError,  BrokenPipeError, OSError):
+        except (ConnectionResetError, BrokenPipeError, OSError):
             self.disconnect_with_api_gateway()
             return 'error'
 
@@ -105,10 +108,8 @@ class Service_Proxy:
 
         while not self.stop_flag:
             message_from_agent = self.receive_from_agent()
-
-            while message_from_agent is None:
-                message_from_agent = self.receive_from_agent()
-                time.sleep(0.001)
+            if message_from_agent is None:
+                continue
 
             if message_from_agent['request_code'] == '103':
                 if message_from_agent['command'] == 'stop':
@@ -168,6 +169,8 @@ class Service_Proxy:
                         self.send_to_service(message_to_service)
 
                         response_from_service = self.receive_from_service()
+                        if response_from_service is None:
+                            continue
 
                         data = response_from_service['data']
 

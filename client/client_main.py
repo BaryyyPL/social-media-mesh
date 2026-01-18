@@ -61,7 +61,7 @@ class Client:
         self.public_key = create_public_key(self.private_key)
         self.api_gateway_public_key = load_api_gateway_public_key()
         self.symmetrical_key = None
-        self.user_id = None
+        self.user_id = 1
         self.login = None
         self.api_gateway_socket = self.connect_to_server()
 

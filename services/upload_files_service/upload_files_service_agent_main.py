@@ -53,10 +53,7 @@ def send_to_process(process, message):
 
 def receive_from_process(process):
     queue_from_worker = process['agent_queue_from_service_proxy']
-    try:
-        return queue_from_worker.get_nowait()
-    except queue.Empty:
-        return None
+    return queue_from_worker.get()
 
 
 def receive_status_from_process(process):
@@ -337,9 +334,6 @@ class Service_Agent:
                     send_to_process(service_proxy, message_to_service_proxy)
 
                 message_from_process = receive_from_process(service_proxy)
-                while message_from_process is None:
-                    message_from_process = receive_from_process(service_proxy)
-                    time.sleep(0.001)
 
                 if message_from_process['request_code'] == '102' and message_from_process['message'] == 'Server OK':
                     message_to_manager = {

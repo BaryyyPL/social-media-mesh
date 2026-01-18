@@ -57,7 +57,7 @@ class Service_Proxy:
 
     def receive_from_agent(self):
         try:
-            return self.agent_queue_to_service_proxy.get()
+            return self.agent_queue_to_service_proxy.get(timeout=1.0)
         except queue.Empty:
             return None
 
@@ -65,7 +65,10 @@ class Service_Proxy:
         self.service_proxy_queue_to_service.put(message)
 
     def receive_from_service(self):
-        return self.service_proxy_queue_from_service.get()
+        try:
+            return self.service_proxy_queue_from_service.get(timeout=1.0)
+        except queue.Empty:
+            return None
 
     def send_status_to_agent(self, message):
         self.status_queue.put(message)
@@ -105,10 +108,8 @@ class Service_Proxy:
 
         while not self.stop_flag:
             message_from_agent = self.receive_from_agent()
-
-            while message_from_agent is None:
-                message_from_agent = self.receive_from_agent()
-                time.sleep(0.001)
+            if message_from_agent is None:
+                continue
 
             if message_from_agent['request_code'] == '103':
                 if message_from_agent['command'] == 'stop':
@@ -168,6 +169,8 @@ class Service_Proxy:
                         self.send_to_service(message_to_service)
 
                         response_from_service = self.receive_from_service()
+                        if response_from_service is None:
+                            continue
 
                         data = response_from_service['data']
 
