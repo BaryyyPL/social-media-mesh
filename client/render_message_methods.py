@@ -15,6 +15,8 @@ def render_login_message(response):
     if response['response']['id']:
         return response['response']['id'], response['response']['login']
 
+    return None, None
+
 
 def render_upload_posts_message(response):
     print(response['response']['message'])
