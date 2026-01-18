@@ -3,6 +3,15 @@ import socket
 import threading
 import time
 
+import logging
+
+logging.basicConfig(
+    filename='communication.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
 from cryptography_process import (
     load_private_key,
     handshake_sender,
@@ -18,17 +27,29 @@ lock = threading.Lock()
 
 
 def receive_message(agent):
+    agent_info = f"{agent.get('socket', 'unknown')}:{agent.get('port', 'unknown')}"
     try:
         data = receive_secure_message(agent['socket'], agent['symmetrical_key'])
         if data is None:
+            logging.warning(f"Connection closed by {agent_info}")
             return None
-        return data.decode()
 
-    except (ConnectionResetError, BrokenPipeError, OSError):
+        decoded_data = data.decode()
+        logging.info(f"RECEIVED from {agent_info}: {decoded_data}")
+        return decoded_data
+
+    except socket.timeout:
+        return None
+
+    except (ConnectionResetError, BrokenPipeError, OSError) as e:
+        logging.error(f"Socket error with {agent_info}: {e}")
+
         return None
 
 
 def send_message(agent, message):
+    agent_info = f"{agent.get('host', 'unknown')}:{agent.get('port', 'unknown')}"
+    logging.info(f"SENDING to {agent_info}: {message}")
     send_secure_message(agent['socket'], agent['symmetrical_key'], message)
 
 
@@ -47,11 +68,24 @@ def request_service_info(agent, session_message_id):
 
     send_message(agent, json.dumps(message))
 
-    raw_response = receive_message(agent)
-    if not raw_response:
-        return None
+    response = None
 
-    response = json.loads(raw_response)
+    correct_request_code = False
+
+    start_time = time.monotonic()
+
+    while not correct_request_code:
+        raw_response = receive_message(agent)
+        if not raw_response:
+            return None
+
+        response = json.loads(raw_response)
+
+        if response['request_code'] == '104':
+            correct_request_code = True
+
+        if time.monotonic() - start_time > 2:
+            return None
 
     if (
             response['response_code'] == '999'
@@ -93,7 +127,7 @@ class Manager:
         self.port_for_download_files_service_agent = 9993
         self.port_for_available_files_service_agent = 9992
         self.port_for_delete_account_service_agent = 9991
-        self.host = 'localhost'
+        self.host = '127.0.0.1'
 
         self.maximum_number_of_attempts = 3
 
@@ -120,16 +154,16 @@ class Manager:
         self.delete_account_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         self.list_of_service_sockets = [self.api_gateway_socket, self.registration_service_socket,
-                                   self.login_service_socket, self.upload_posts_service_socket,
-                                   self.read_posts_service_socket, self.upload_files_service_socket,
-                                   self.download_files_service_socket, self.available_files_service_socket,
-                                   self.delete_account_service_socket]
+                                        self.login_service_socket, self.upload_posts_service_socket,
+                                        self.read_posts_service_socket, self.upload_files_service_socket,
+                                        self.download_files_service_socket, self.available_files_service_socket,
+                                        self.delete_account_service_socket]
 
         self.list_of_lists_of_agents = [self.list_of_api_gateways, self.list_of_registration_services,
-                                   self.list_of_login_services, self.list_of_upload_posts_services,
-                                   self.list_of_read_posts_services, self.list_of_upload_files_services,
-                                   self.list_of_download_files_services, self.list_of_available_files_service,
-                                   self.list_of_delete_account_service]
+                                        self.list_of_login_services, self.list_of_upload_posts_services,
+                                        self.list_of_read_posts_services, self.list_of_upload_files_services,
+                                        self.list_of_download_files_services, self.list_of_available_files_service,
+                                        self.list_of_delete_account_service]
 
         self.private_key = load_private_key()
 
@@ -208,14 +242,14 @@ class Manager:
                 daemon=True)
 
             api_gateway_thread.start()
-            #registration_service_thread.start()
+            # registration_service_thread.start()
             login_service_thread.start()
-            #upload_posts_service_thread.start()
-            read_posts_service_thread.start()
+            # upload_posts_service_thread.start()
+            # read_posts_service_thread.start()
             #upload_files_service_thread.start()
-            #download_files_service_thread.start()
+            download_files_service_thread.start()
             #available_files_service_thread.start()
-            #delete_account_service_thread.start()
+            # delete_account_service_thread.start()
 
             print('Threads running...')
             self.start_communication()
@@ -270,7 +304,8 @@ class Manager:
                     'public_key': agent_public_key,
                     'symmetrical_key': symmetrical_key,
                     'load': 100,
-                    'last_time_report': time.monotonic()
+                    'last_time_report': time.monotonic(),
+                    'port': port
                 }
 
                 if service_socket is self.api_gateway_socket:
@@ -333,17 +368,17 @@ class Manager:
 
     def verify_agents(self):
         with lock:
-            #lists = self.list_of_lists_of_agents
+            # lists = self.list_of_lists_of_agents
             lists = [self.list_of_api_gateways,
-                     #self.list_of_registration_services,
+                     # self.list_of_registration_services,
                      self.list_of_login_services,
-                     #self.list_of_upload_posts_services,
-                     self.list_of_read_posts_services,
+                     # self.list_of_upload_posts_services,
+                     # self.list_of_read_posts_services,
                      #self.list_of_upload_files_services,
-                     #self.list_of_download_files_services,
+                     self.list_of_download_files_services,
                      #self.list_of_available_files_service,
-                     #self.list_of_delete_account_service
-            ]
+                     # self.list_of_delete_account_service
+                     ]
 
         for list_of_agents in lists:
             if not list_of_agents:
@@ -410,8 +445,6 @@ class Manager:
                 session_message_id = message_from_agent['message_id']
                 service_type = message_from_agent['service_type']
 
-                agent_list = []
-
                 match service_type:
                     case 'registration_service':
                         agent_list = self.list_of_registration_services
@@ -430,6 +463,16 @@ class Manager:
 
                     case 'download_files_service':
                         agent_list = self.list_of_download_files_services
+
+                    case 'available_files_service':
+                        agent_list = self.list_of_available_files_service
+
+                    case 'delete_account_service':
+                        agent_list = self.list_of_delete_account_service
+
+                    case _:
+                        logging.warning(f"Unknown service type requested: {service_type}")
+                        continue
 
                 success_flag = False
                 number_of_attempts = 0

@@ -5,7 +5,7 @@ import time
 import mysql.connector
 from mysql.connector import Error
 
-from cryptography_process import symmetric_key_encrypt, base64_decode
+from cryptography_process import symmetric_key_encrypt, base64_decode, hash_filename
 
 class Service:
     def __init__(self, service_proxy_queue_to_service, service_proxy_queue_from_service,
@@ -85,12 +85,13 @@ class Service:
                 encrypted_file = symmetric_key_encrypt(self.database_symmetrical_key, file_bytes)
 
                 encrypted_filename = symmetric_key_encrypt(self.database_symmetrical_key, filename)
+                hashed_filename = hash_filename(filename)
                 encrypted_description = symmetric_key_encrypt(self.database_symmetrical_key, description)
 
                 try:
                     self.cursor.execute(
-                        "SELECT filename FROM files WHERE filename = %s",
-                        (encrypted_filename,)
+                        "SELECT filename_hash FROM files WHERE filename_hash = %s",
+                        (hashed_filename,)
                     )
 
                     row = self.cursor.fetchone()
@@ -101,8 +102,9 @@ class Service:
                     else:
 
                         self.cursor.execute(
-                            "INSERT INTO files (owner_id, filename, description, file) VALUES (%s, %s, %s, %s)",
-                            (owner_id, encrypted_filename, encrypted_description, encrypted_file)
+                            "INSERT INTO files (owner_id, filename, filename_hash, description, file) "
+                            "VALUES (%s, %s, %s, %s, %s)",
+                            (owner_id, encrypted_filename, hashed_filename, encrypted_description, encrypted_file)
                         )
                         self.db_connection.commit()
 

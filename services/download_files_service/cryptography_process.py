@@ -3,6 +3,7 @@ import json
 import os
 import socket
 
+import bcrypt
 from cryptography.exceptions import InvalidSignature
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -30,6 +31,18 @@ def load_or_create_private_key():
                 )
             )
     return private_key
+
+def verify_filename(rows, filename):
+    for row in rows:
+        file_id = row['id']
+        filename_hash = row['filename_hash']
+        if bcrypt.checkpw(
+            filename.encode('utf-8'),
+            filename_hash.encode('utf-8')):
+
+            return file_id
+
+    return None
 
 def create_public_key(private_key):
     return private_key.public_key()

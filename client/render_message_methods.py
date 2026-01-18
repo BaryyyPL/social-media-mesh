@@ -39,7 +39,7 @@ def render_read_posts_message(response):
                 print(f' Author: {author}')
                 print(f' Date : {date}')
                 print('-' * 60)
-                print(contents)
+                print(f' Content: {contents}')
                 print('=' * 60)
                 print()
 
@@ -82,8 +82,8 @@ def render_available_files_message(response):
             print(f' Author: {author}')
             print(f' Date : {date}')
             print('-' * 60)
-            print(filename)
-            print(description)
+            print(f' Filename: {filename}')
+            print(f' Description : {description}')
             print('=' * 60)
             print()
 

@@ -146,8 +146,8 @@ class Service_Proxy:
                 if self.working_status:
                     self.change_working_status(True)
 
-                    raw_message_from_api_gateway = self.receive_from_api_gateway()
-                    while not raw_message_from_api_gateway:
+                    raw_message_from_api_gateway = None
+                    while raw_message_from_api_gateway is None:
                         raw_message_from_api_gateway = self.receive_from_api_gateway()
                         time.sleep(0.001)
 
@@ -168,9 +168,9 @@ class Service_Proxy:
 
                         self.send_to_service(message_to_service)
 
-                        response_from_service = self.receive_from_service()
-                        if response_from_service is None:
-                            continue
+                        response_from_service = None
+                        while response_from_service is None:
+                            response_from_service = self.receive_from_service()
 
                         data = response_from_service['data']
 
@@ -180,6 +180,8 @@ class Service_Proxy:
                             'data': data,
                             'response_code': '999'
                         }
+
+                        print(message_to_api_gateway)
 
                         self.send_to_api_gateway(json.dumps(message_to_api_gateway))
 

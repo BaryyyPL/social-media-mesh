@@ -22,7 +22,7 @@ list_of_ports_for_api_gateway = [8666, 8667, 8668, 8669, 8670]
 
 
 def create_worker():
-    host = 'localhost'
+    host = '127.0.0.1'
     port = list_of_ports_for_api_gateway.pop()
     queue_to_worker = queue.Queue()
     queue_from_worker = queue.Queue()
@@ -76,7 +76,7 @@ class API_Gateway_Agent:
         self.flag = True
         self.message_id = 0
         self.manager_port = 9999
-        self.manager_host = 'localhost'
+        self.manager_host = '127.0.0.1'
         self.private_key = load_or_create_private_key()
         self.public_key = create_public_key(self.private_key)
         self.manager_public_key = load_manager_public_key()

@@ -27,7 +27,7 @@ from render_message_methods import (
 
 MAX_FILE_SIZE = 5 * 1024 * 1024  # =5MB
 
-api_gateway_host = 'localhost'
+api_gateway_host = '127.0.0.1'
 list_of_ports_of_api_gateway = [8666, 8667, 8668, 8669, 8670]
 maximum_number_of_attempts_for_connect_with_this_port = 3
 

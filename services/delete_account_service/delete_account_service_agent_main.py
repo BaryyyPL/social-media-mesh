@@ -36,7 +36,6 @@ def find_free_port():
 
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 s.bind(('127.0.0.1', port))
 
                 return port
@@ -80,7 +79,7 @@ class Service_Agent:
         self.flag = True
         self.message_id = 0
         self.manager_port = 9991
-        self.manager_host = 'localhost'
+        self.manager_host = '127.0.0.1'
 
         self.private_key = load_or_create_private_key()
         self.public_key = create_public_key(self.private_key)
@@ -157,7 +156,7 @@ class Service_Agent:
         raise SystemExit
 
     def create_worker(self):
-        host = 'localhost'
+        host = '127.0.0.1'
         port = find_free_port()
         agent_queue_to_service_proxy = queue.Queue()
         agent_queue_from_service_proxy = queue.Queue()

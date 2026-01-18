@@ -5,7 +5,7 @@ import time
 import mysql.connector
 from mysql.connector import Error
 
-from cryptography_process import symmetric_key_encrypt, symmetric_key_decrypt, base64_encode
+from cryptography_process import symmetric_key_decrypt, base64_encode, verify_filename
 
 
 class Service:
@@ -86,30 +86,41 @@ class Service:
 
                 try:
 
-                    encrypted_filename = symmetric_key_encrypt(self.database_symmetrical_key, filename)
-
                     self.cursor.execute(
-                        "SELECT filename, file FROM files WHERE filename = %s",
-                        (encrypted_filename,)
+                        "SELECT id, filename_hash FROM files"
                     )
 
-                    row = self.cursor.fetchone()
+                    rows = self.cursor.fetchall()
 
-                    if row:
+                    if rows:
 
-                        response['filename'] = filename
-                        decrypted_file = symmetric_key_decrypt(self.database_symmetrical_key, row['file'])
-                        file_b64 = base64_encode(decrypted_file)
+                        file_id = verify_filename(rows, filename)
 
-                        response['file'] = file_b64
+                        if file_id:
+
+                            self.cursor.execute(
+                                "SELECT file FROM files WHERE id = %s",
+                                (file_id,)
+                            )
+
+                            row = self.cursor.fetchone()
+
+                            response['filename'] = filename
+                            decrypted_file = symmetric_key_decrypt(self.database_symmetrical_key, row['file'])
+                            file_b64 = base64_encode(decrypted_file)
+
+                            response['file'] = file_b64
+
+                        else:
+                            response['message'] = 'Wrong filename.'
 
                     else:
-                        response['message'] = 'Wrong filename.'
+                        response['message'] = 'No available files.'
 
 
                 except (mysql.connector.Error, mysql.connector.ProgrammingError,
                         mysql.connector.InterfaceError, mysql.connector.DatabaseError,
-                        mysql.connector.OperationalError) as e:
+                        mysql.connector.OperationalError, TypeError) as e:
 
                     response['message'] = f'An error occurred - {e}'
 

@@ -4,6 +4,15 @@ import socket
 import threading
 import time
 
+import logging
+
+logging.basicConfig(
+    filename='api_gateway.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
 from cryptography_process import (
     handshake_sender,
     send_secure_message,
@@ -88,8 +97,9 @@ class API_Gateway:
     def connect_with_client(self):
         try:
             self.client_socket, self.client_address = self.api_gateway_socket.accept()
-
             self.client_socket.settimeout(self.CLIENT_TIMEOUT)
+
+            logging.info(f"Accepted connection from {self.client_address}")
 
             self.client_public_key, self.client_symmetrical_key = handshake_sender(
                 self.private_key,
@@ -97,39 +107,122 @@ class API_Gateway:
                 self.message_id
             )
             if not self.client_public_key or not self.client_symmetrical_key:
+                logging.warning(f"Handshake failed with {self.client_address}")
                 self.client_socket.close()
                 return False
 
             self.message_id += 1
+            logging.info(f"Handshake successful with {self.client_address}")
             return True
 
         except socket.timeout:
             return False
+        except Exception as e:
+            logging.error(f"Error connecting with client: {e}")
+            return False
 
-    def connect_to_service_proxy(self):
-        service_proxy_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        service_proxy_socket.settimeout(self.SERVICE_TIMEOUT)
-
-        service_proxy_socket.connect((self.service_proxy_host, self.service_proxy_port))
-        self.service_proxy_socket = service_proxy_socket
-
-    def send_to_service_proxy(self, message):
-        send_secure_message(
-            self.service_proxy_socket,
-            self.service_proxy_symmetrical_key,
-            message
-        )
-
-    def receive_from_service_proxy(self):
+    def send_to_client(self, message):
         try:
-            return receive_secure_message(
-                self.service_proxy_socket,
-                self.service_proxy_symmetrical_key
+            logging.info(f"SENDING to Client: {message}")
+            send_secure_message(
+                self.client_socket,
+                self.client_symmetrical_key,
+                message
             )
+        except Exception as e:
+            logging.error(f"Error sending to client: {e}")
+
+    def receive_from_client(self):
+        try:
+            received_secure_message = receive_secure_message(
+                self.client_socket,
+                self.client_symmetrical_key
+            )
+            if received_secure_message:
+                decoded_message = received_secure_message.decode()
+                logging.info(f"RECEIVED from Client: {decoded_message}")
+                return decoded_message
+            else:
+                return None
 
         except socket.timeout:
             return None
+
+        except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError, OSError) as e:
+            logging.warning(f"Client disconnected or error: {e}")
+            self.disconnect_with_client()
+            return 'error'
+
+    def disconnect_with_client(self):
+        logging.info("Disconnecting from client")
+        if self.client_socket:
+            close_socket(self.client_socket)
+
+        self.client_socket = None
+        self.client_address = None
+        self.client_public_key = None
+        self.client_symmetrical_key = None
+
+        self.change_working_status(False)
+
+    def connect_to_service_proxy(self):
+        try:
+            service_proxy_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            service_proxy_socket.settimeout(self.SERVICE_TIMEOUT)
+            service_proxy_socket.connect((self.service_proxy_host, self.service_proxy_port))
+            self.service_proxy_socket = service_proxy_socket
+            logging.info(f"Connected to service proxy at {self.service_proxy_host}:{self.service_proxy_port}")
+        except Exception as e:
+            logging.error(f"Failed to connect to service proxy: {e}")
+            raise e
+
+    def send_to_service_proxy(self, message):
+        try:
+            logging.info(f"SENDING to Service Proxy: {message}")
+            send_secure_message(
+                self.service_proxy_socket,
+                self.service_proxy_symmetrical_key,
+                message
+            )
+        except Exception as e:
+            logging.error(f"Error sending to service proxy: {e}")
+
+    def receive_from_service_proxy(self):
+        try:
+            data = receive_secure_message(
+                self.service_proxy_socket,
+                self.service_proxy_symmetrical_key
+            )
+            if data:
+                logging.info(f"RECEIVED from Service Proxy: {data.decode()}")
+                return data.decode()
+            return None
+
+        except socket.timeout:
+            return None
+        except Exception as e:
+            logging.error(f"Error receiving from service proxy: {e}")
+            return None
+
+    def disconnect_with_service(self):
+        logging.info("Disconnecting from service proxy")
+        message_to_service = {
+            'request': 'disconnect',
+            'request_code': '106',
+            'service_type': 'service'
+        }
+
+        if self.service_proxy_socket:
+            try:
+                self.send_to_service_proxy(json.dumps(message_to_service))
+                close_socket(self.service_proxy_socket)
+            except Exception as e:
+                logging.error(f"Error closing service socket: {e}")
+
+        self.service_proxy_host = None
+        self.service_proxy_port = None
+        self.service_proxy_socket = None
+        self.service_proxy_symmetrical_key = None
 
     def send_to_agent(self, message):
         self.queue_from_worker.put(message)
@@ -139,56 +232,6 @@ class API_Gateway:
             return self.queue_to_worker.get(timeout=1)
         except queue.Empty:
             return None
-
-    def send_to_client(self, message):
-        send_secure_message(
-            self.client_socket,
-            self.client_symmetrical_key,
-            message
-        )
-
-    def receive_from_client(self):
-        try:
-            received_secure_message = receive_secure_message(
-                self.client_socket,
-                self.client_symmetrical_key
-            )
-            if received_secure_message:
-                return received_secure_message.decode()
-            else:
-                return None
-
-        except socket.timeout:
-            return None
-
-        except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError, OSError):
-            self.disconnect_with_client()
-            return 'error'
-
-    def disconnect_with_service(self):
-        message_to_service = {
-            'request': 'disconnect',
-            'request_code': '106',
-            'service_type': 'service'
-        }
-
-        self.send_to_service_proxy(json.dumps(message_to_service))
-        close_socket(self.service_proxy_socket)
-
-        self.service_proxy_host = None
-        self.service_proxy_port = None
-        self.service_proxy_socket = None
-        self.service_proxy_symmetrical_key = None
-
-    def disconnect_with_client(self):
-        close_socket(self.client_socket)
-
-        self.client_socket = None
-        self.client_address = None
-        self.client_public_key = None
-        self.client_symmetrical_key = None
-
-        self.change_working_status(False)
 
     def communication_with_services(self, message_from_client):
         service_type = message_from_client['service_type']

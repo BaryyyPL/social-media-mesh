@@ -93,9 +93,9 @@ class Service:
                     if rows:
 
                         for row in rows:
-                            decrypted_filename = symmetric_key_decrypt(self.database_symmetrical_key, row['filename'])
+                            decrypted_filename = symmetric_key_decrypt(self.database_symmetrical_key, row['filename']).decode()
                             decrypted_description = symmetric_key_decrypt(self.database_symmetrical_key,
-                                                                          row['description'])
+                                                                          row['description']).decode()
 
                             response['files'].append({
                                 'filename': decrypted_filename,
