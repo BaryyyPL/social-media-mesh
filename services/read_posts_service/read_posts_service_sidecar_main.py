@@ -6,6 +6,7 @@ import time
 
 from cryptography_process import (send_secure_message, receive_secure_message, close_socket)
 
+
 class Service_Proxy:
     def __init__(self, host, port, agent_queue_to_service_proxy, agent_queue_from_service_proxy,
                  service_proxy_queue_to_service, service_proxy_queue_from_service, status_queue):
@@ -83,7 +84,7 @@ class Service_Proxy:
                 return received_secure_message.decode()
             else:
                 return None
-        except (ConnectionResetError,  BrokenPipeError, OSError):
+        except (ConnectionResetError, BrokenPipeError, OSError):
             self.disconnect_with_api_gateway()
             return 'error'
 

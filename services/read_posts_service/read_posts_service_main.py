@@ -10,7 +10,8 @@ from cryptography_process import symmetric_key_decrypt
 
 class Service:
     def __init__(self, service_proxy_queue_to_service, service_proxy_queue_from_service,
-                 database_host, database_user, database_password, database_database, database_port, database_symmetrical_key):
+                 database_host, database_user, database_password, database_database, database_port,
+                 database_symmetrical_key):
 
         self.service_proxy_queue_to_service = service_proxy_queue_to_service
         self.service_proxy_queue_from_service = service_proxy_queue_from_service

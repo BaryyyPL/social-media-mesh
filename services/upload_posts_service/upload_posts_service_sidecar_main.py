@@ -52,6 +52,7 @@ class Service_Proxy:
         except socket.timeout:
             return False
 
+
     def send_to_agent(self, message):
         self.agent_queue_from_service_proxy.put(message)
 

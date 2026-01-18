@@ -14,6 +14,7 @@ from cryptography_process import (
 
 
 def get_request_and_request_code(service_type):
+
     match service_type:
         case 'registration_service':
             return 'registration', '109'
@@ -133,7 +134,10 @@ class API_Gateway:
         self.queue_from_worker.put(message)
 
     def receive_from_agent(self):
-        return self.queue_to_worker.get()
+        try:
+            return self.queue_to_worker.get(timeout=1)
+        except queue.Empty:
+            return None
 
     def send_to_client(self, message):
         send_secure_message(
@@ -199,7 +203,9 @@ class API_Gateway:
         }
         self.send_to_agent(message_to_agent)
 
-        message_from_agent = self.receive_from_agent()
+        message_from_agent = None
+        while not message_from_agent:
+            message_from_agent = self.receive_from_agent()
 
         self.service_proxy_host = message_from_agent['host']
         self.service_proxy_port = message_from_agent['port']
@@ -260,10 +266,11 @@ class API_Gateway:
 
     def read_from_agent(self):
         message_from_agent = self.receive_from_agent()
-        if message_from_agent['request_code'] == '103':
-            if message_from_agent['command'] == 'stop':
-                close_socket(self.api_gateway_socket)
-                self.stop_flag = True
+        if message_from_agent:
+            if message_from_agent['request_code'] == '103':
+                if message_from_agent['command'] == 'stop':
+                    close_socket(self.api_gateway_socket)
+                    self.stop_flag = True
 
     def communication_with_client(self):
         while not self.stop_flag:

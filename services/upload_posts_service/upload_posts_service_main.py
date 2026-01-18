@@ -25,7 +25,7 @@ class Service:
 
         self.db_connection = self.connect_to_database()
         if not self.db_connection:
-            raise SystemExit("Cannot connect to database")
+            raise SystemExit('Cannot connect to database')
 
         self.cursor = self.db_connection.cursor(buffered=True, dictionary=True)
 
@@ -56,11 +56,11 @@ class Service:
             )
 
             if connection.is_connected():
-                print("Database connected")
+                print('Database connected')
                 return connection
 
         except Error as e:
-            print(f"Database connection error: {e}")
+            print(f'Database connection error: {e}')
 
         return None
 
@@ -119,3 +119,4 @@ class Service:
                 self.db_connection.close()
 
             time.sleep(0.001)
+
