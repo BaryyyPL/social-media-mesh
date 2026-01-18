@@ -123,7 +123,6 @@ class API_Gateway:
 
     def send_to_client(self, message):
         try:
-            logging.info(f"SENDING to Client: {message}")
             send_secure_message(
                 self.client_socket,
                 self.client_symmetrical_key,
@@ -178,7 +177,6 @@ class API_Gateway:
 
     def send_to_service_proxy(self, message):
         try:
-            logging.info(f"SENDING to Service Proxy: {message}")
             send_secure_message(
                 self.service_proxy_socket,
                 self.service_proxy_symmetrical_key,
