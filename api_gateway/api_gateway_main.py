@@ -51,6 +51,7 @@ class API_Gateway:
 
         # Starting of server
         self.api_gateway_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.api_gateway_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.api_gateway_socket.bind((host, port))
         self.api_gateway_socket.listen(1)
 

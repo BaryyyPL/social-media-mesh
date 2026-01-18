@@ -128,7 +128,7 @@ class Service:
 
                             for row in rows:
                                 contents = row['contents']
-                                decrypted_contents = symmetric_key_decrypt(self.database_symmetrical_key, contents)
+                                decrypted_contents = symmetric_key_decrypt(self.database_symmetrical_key, contents).decode()
 
                                 response['posts'].append({
                                     'contents': decrypted_contents,

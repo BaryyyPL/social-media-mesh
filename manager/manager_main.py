@@ -211,7 +211,7 @@ class Manager:
             #registration_service_thread.start()
             login_service_thread.start()
             #upload_posts_service_thread.start()
-            #read_posts_service_thread.start()
+            read_posts_service_thread.start()
             #upload_files_service_thread.start()
             #download_files_service_thread.start()
             #available_files_service_thread.start()
@@ -338,7 +338,7 @@ class Manager:
                      #self.list_of_registration_services,
                      self.list_of_login_services,
                      #self.list_of_upload_posts_services,
-                     #self.list_of_read_posts_services,
+                     self.list_of_read_posts_services,
                      #self.list_of_upload_files_services,
                      #self.list_of_download_files_services,
                      #self.list_of_available_files_service,
