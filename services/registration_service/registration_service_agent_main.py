@@ -29,12 +29,21 @@ def find_free_port():
 
     start_port = 1024
     end_port = 49151
+
     for port in range(start_port, end_port + 1):
-        if port not in reserved_ports:
+        if port in reserved_ports:
+            continue
+
+        try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                if s.connect_ex(('127.0.0.1', port)) != 0:
-                    return port
+                s.bind(('127.0.0.1', port))
+
+                return port
+        except OSError:
+            continue
+
+    raise Exception("Nie znaleziono żadnego wolnego portu!")
 
 
 def send_to_process(process, message):

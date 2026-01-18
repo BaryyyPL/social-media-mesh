@@ -80,7 +80,8 @@ class Service:
 
                 response = {
                     'message': None,
-                    'id': False
+                    'id': False,
+                    'login': None
                 }
 
                 try:
@@ -105,7 +106,8 @@ class Service:
 
                                 response = {
                                     'message': 'Successful login.',
-                                    'id': client_id
+                                    'id': client_id,
+                                    'login': login
                                 }
 
                             else:

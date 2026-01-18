@@ -15,6 +15,7 @@ class Service_Proxy:
         self.host = host
         self.port = port
         self.service_proxy_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.service_proxy_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.service_proxy_socket.bind((self.host, self.port))
         self.service_proxy_socket.listen(5)
         self.service_proxy_socket.settimeout(10)

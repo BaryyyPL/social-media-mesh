@@ -62,6 +62,7 @@ class Client:
         self.api_gateway_public_key = load_api_gateway_public_key()
         self.symmetrical_key = None
         self.user_id = None
+        self.login = None
         self.api_gateway_socket = self.connect_to_server()
 
     def run(self):
@@ -200,7 +201,8 @@ class Client:
 
             else:
 
-                print('\n1. Upload post\n2. Read posts\n3. Upload file\n4. Download file\n'
+                print(f'\nLogin as {self.login}')
+                print('1. Upload post\n2. Read posts\n3. Upload file\n4. Download file\n'
                       '5. Available files\n6. Logout\n7. Help\n8. Delete account\n9. Exit')
                 option = input('Choose an option: ')
 
@@ -351,7 +353,7 @@ class Client:
                     render_registration_message(response)
 
                 case 'login_service':
-                    self.user_id = render_login_message(response)
+                    self.user_id, self.login = render_login_message(response)
 
                 case 'upload_posts_service':
                     render_upload_posts_message(response)
