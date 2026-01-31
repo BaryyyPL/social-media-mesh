@@ -1,40 +1,66 @@
-# social-media-mesh
-A modular Python microservice application implementing a service mesh architecture. Includes user authentication, post management, and file upload services with secure communication via symmetric and asymmetric encryption.
+Social Media Service Mesh
+Python-based decentralized microservices platform implementing custom Service Mesh architecture. No Kubernetes required!
 
-# Service Mesh App
 
-## Overview
-This project is a Python microservice platform built with a service mesh architecture. It includes services for:
-- User authentication (login/registration)
-- Post management (upload, read)
-- File management (upload, read)
+Quick Start
+'# 1. Clone & setup
+git clone https://github.com/yourusername/social-media-mesh.git
+cd social-media-mesh
+python -m venv venv
 
-## Architecture
-- Manager: orchestrates agents and services
-- Agents: handle secure communication with services
-- Services: dedicated microservices with single responsibility
-- Communication: secure via symmetric/asymmetric keys
+# Windows
+venv\Scripts\activate
+# Mac/Linux
+source venv/bin/activate
 
-## Getting Started
-1. Clone the repository
-```
-git clone https://github.com/<your-username>/service-mesh-app.git
-```
-
-2. Set up Python environment
-```
-python -m venv .venv
-```
-```
-source .venv/bin/activate  # Linux / Mac
-```
-```
-.venv\Scripts\activate     # Windows
-```
-```
 pip install -r requirements.txt
-```
 
-4. Configure database: service_mesh_app_db with tables users, posts, files
-   
-5. Run Manager, Agents and Clients
+# 2. Start XAMPP → MySQL
+# (Ensure MySQL is running on port 3306)
+
+# 3. Run components (separate terminals):
+python manager.py
+python agent_auth.py
+python agent_file.py
+python agent_post.py
+python api_gateway.py
+
+# 4. Connect client:
+python client.py'
+
+
+What It Does
+- User accounts: Register, login, delete
+- Text posts: Create and browse posts
+- File sharing: Upload/download any files
+- Secure comms: AES-256 + RSA encryption
+
+
+Architecture
+Client → API Gateway → Manager → [Agents] → [Services] → MySQL
+
+- manager.py - Brain of the system (control plane)
+- agent_*.py - Service managers (auth/file/post)
+- service_*.py - Business logic microservices
+- api_gateway.py - Single entry point
+- client.py - User interface
+
+
+Security Features
+- Custom handshake protocol (PGP-like)
+- AES-256 for data encryption
+- RSA for key exchange
+- bcrypt password hashing
+- Database encryption at rest
+
+Testing
+- After running all components:
+- Register new user
+- Login
+- Create post
+- Upload file
+- Browse content
+
+About
+Engineering thesis project - University of Siedlce, 2026
+"Design and Implementation of Decentralized Communication Infrastructure in Cloud Computing"
